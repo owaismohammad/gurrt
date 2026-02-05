@@ -6,4 +6,8 @@ pip install uv
 
 # Sync dependencies
 uv sync
+
+# Activate environment
+.venv\Scripts\activate
 ```
+
