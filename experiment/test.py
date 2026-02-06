@@ -1,17 +1,14 @@
-import os
-from ollama import Client
+import torch
 
-client = Client(
-    host='https://ollama.com',
-    headers={'Authorization': 'Bearer ' + os.environ.get('OLLAMA_API_KEY')}
-)
+print("PyTorch version:", torch.__version__)
+print("CUDA available:", torch.cuda.is_available())
 
-messages = [
-  {
-    'role': 'user',
-    'content': 'Why is the sky blue?',
-  },
-]
+if torch.cuda.is_available():
+    print("GPU name:", torch.cuda.get_device_name(0))
 
-for part in client.chat('qwen2.5vl', messages=messages, stream=True):
-  print(part.message.content, end='', flush=True)
+    # Simple GPU computation
+    x = torch.rand(1000, 1000).cuda()
+    y = torch.mm(x, x)
+    print("GPU computation successful ✅")
+else:
+    print("GPU not available ❌")

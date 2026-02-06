@@ -9,3 +9,6 @@ wheels/
 # Virtual environments
 .venv
 .env
+outputs
+tempCodeRunnerFile.py
+chroma_db_data

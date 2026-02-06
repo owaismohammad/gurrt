@@ -1,0 +1,1 @@
+BLIP_CUSTOM_PROMPT = "A detailed description of what is going on in this picture: "
