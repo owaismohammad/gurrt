@@ -1,6 +1,7 @@
+from io import BytesIO
 import cv2
-import moviepy as mp
 from transformers import CLIPProcessor, CLIPModel
+from ollama import chat
 
 model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
 processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
@@ -77,3 +78,26 @@ def audio_extraction(path: str):
     video.close()
     
     return audio_file
+
+def genrate_caption(frame,buffer):
+    
+    frame.save(buffer, format="JPEG")
+    img_bytes = buffer.getvalue()
+    response = chat(
+    model='gemma3',
+    messages=[
+        {
+    "role": "system",
+    "content": "You are a helpful assistant that can analyze images and provide captions."
+    },
+
+    {
+        'role': 'user',
+        'content': 'What is in this image? .',
+        'images': [img_bytes],
+    }
+    ],
+    )
+
+    return response.message.content
+
