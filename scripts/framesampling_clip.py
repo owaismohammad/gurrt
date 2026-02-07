@@ -5,8 +5,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import cv2
 from transformers import CLIPProcessor, CLIPModel, BlipProcessor, BlipForConditionalGeneration
 import torch
-from app.vector_db import frame_embedding_collection
-from app.prompts import BLIP_CUSTOM_PROMPT
+# from app.vector_db import frame_embedding_collection
+# from app.prompts import BLIP_CUSTOM_PROMPT
 from dotenv import load_dotenv
 from PIL import Image
 load_dotenv()
@@ -18,7 +18,8 @@ INPUT_VIDEO = os.getenv(key = 'INPUT_VIDEO')
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print("Device: ", device)
 
-clip_model = CLIPModel.from_pretrained(CLIP_MODEL).to(device)
+clip_model = CLIPModel.from_pretrained(CLIP_MODEL,
+                                       use_safetensors=True).to(device)
 clip_processor = CLIPProcessor.from_pretrained(CLIP_MODEL)
 
 blip_processor = BlipProcessor.from_pretrained(BLIP_MODEL)
