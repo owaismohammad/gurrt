@@ -5,8 +5,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import cv2
 from transformers import CLIPProcessor, CLIPModel, BlipProcessor, BlipForConditionalGeneration
 import torch
-# from app.vector_db import frame_embedding_collection
-# from app.prompts import BLIP_CUSTOM_PROMPT
+from app.vector_db import frame_embedding_collection
+from app.prompts import BLIP_CUSTOM_PROMPT
 from dotenv import load_dotenv
 from PIL import Image
 load_dotenv()

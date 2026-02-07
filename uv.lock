@@ -1975,7 +1975,7 @@ name = "triton"
 version = "3.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "filelock" },
+    { name = "filelock", marker = "python_full_version < '3.13'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/78/eb/65f5ba83c2a123f6498a3097746607e5b2f16add29e36765305e4ac7fdd8/triton-3.1.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c8182f42fd8080a7d39d666814fa36c5e30cc00ea7eeeb1a2983dbb4c99a0fdc", size = 209551444, upload-time = "2024-10-14T16:05:53.433Z" },
@@ -2105,6 +2105,7 @@ dependencies = [
     { name = "opencv-python" },
     { name = "pillow" },
     { name = "python-dotenv" },
+    { name = "tokenizers" },
     { name = "torch" },
     { name = "torchaudio" },
     { name = "torchvision" },
@@ -2118,6 +2119,7 @@ requires-dist = [
     { name = "opencv-python", specifier = ">=4.13.0.92" },
     { name = "pillow", specifier = ">=12.1.0" },
     { name = "python-dotenv", specifier = ">=1.2.1" },
+    { name = "tokenizers", specifier = ">=0.22.2" },
     { name = "torch", index = "https://download.pytorch.org/whl/cu121" },
     { name = "torchaudio", index = "https://download.pytorch.org/whl/cu121" },
     { name = "torchvision", index = "https://download.pytorch.org/whl/cu121" },
