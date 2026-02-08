@@ -12,3 +12,5 @@ wheels/
 outputs
 tempCodeRunnerFile.py
 chroma_db_data
+model_cache
+db_path
