@@ -14,7 +14,7 @@ CLIP_MODEL = os.getenv("CLIP_MODEL")
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-model = CLIPModel.from_pretrained(CLIP_MODEL).to(device)
+model = CLIPModel.from_pretrained(CLIP_MODEL,use_safetensors=True).to(device)
 processor = CLIPProcessor.from_pretrained(CLIP_MODEL)
 
 def query_search(prompt: str):
