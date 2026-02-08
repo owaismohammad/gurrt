@@ -1,71 +1,23 @@
-import cv2
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from typing import Dict, Any
 from ollama import chat
+import moviepy as mp
+from sentence_transformers import CrossEncoder
+import torch
+from dotenv import load_dotenv
+load_dotenv()
 
-# from transformers import CLIPProcessor, CLIPModel
+MODEL_DIR = os.getenv("MODEL_CACHE_DIR")
+if MODEL_DIR is None:
+    raise RuntimeError("MODEL_CACHE_DIR is not set")
 
-# model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
-# processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+device = "cuda" if torch.cuda.is_available() else "cpu"
+print("Device: ", device)
 
-def mapping_frame_with_timestamp(video_path: str, timestamp: list):
-    
-    cap = cv2.VideoCapture(video_path)
-    frame_list = []
-    
-    while cap.isOpened():
-        ret, frame= cap.read()
-        if not ret:
-            break
-        
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        frame_list.append(frame)
-        cv2.waitKey(0)
-    dic = {}
-    for i,j in enumerate(timestamp):
-        dic[j] = frame_list[i]
-        
-    return dic
 
-def using_clip(frame_timestamp: dict, prompt: str):
-    dic = {}
-    for i,j in frame_timestamp.items():
-        inputs = processor(text = prompt, images = j, return_tensors = 'pt', padding = True)
-        outputs = model(**inputs)
-    
-        # similarity of each text description to the image
-        logits_per_image = outputs.logits_per_image
-
-        # convert to normalized probabilities
-        probs = logits_per_image.softmax(dim=1)
-
-        dic[i] = probs
-    return dic
-# def uniform_frame_sampling(path: str):
-#     cap= cv2.VideoCapture(path)
-#     out_path = '../outputs/output.mp4'
-#     fps = cap.get(cv2.CAP_PROP_FPS)
-    
-#     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-#     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    
-#     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-#     out = cv2.VideoWriter(filename=out_path,
-#                           fourcc=fourcc,
-#                           fps= 1.0,
-#                           frameSize=(width, height),
-#                           isColor= True)
-#     frame_no = 0
-#     sampled_timestamps = []
-#     while cap.isOpened():
-#         ret, frame = cap.read()
-#         if not ret:
-#             break
-#         if frame_no % int(round(fps)) == 0:
-#             timestamp_sec = cap.get(cv2.CAP_PROP_POS_MSEC) 
-#             sampled_timestamps.append(timestamp_sec)
-#             out.write(frame)
-#         frame_no +=1
-        
-#     return out_path, sampled_timestamps
 
 def audio_extraction(path: str):
     audio_file = '../outputs/audio_file.mp3'
@@ -76,12 +28,10 @@ def audio_extraction(path: str):
     
     audio.close()
     video.close()
-    
     return audio_file
 
 
-def genrate_caption(frame,buffer):
-    
+def generate_caption(frame,buffer):
     frame.save(buffer, format="JPEG")
     img_bytes = buffer.getvalue()
     response = chat(
@@ -101,3 +51,47 @@ def genrate_caption(frame,buffer):
     )
 
     return response.message.content
+
+
+
+def rerank(query: str, results: Dict[str, Any], top_k: int = 5) -> Dict[str, Any]:
+    """
+    Performs 'Rank CoT' retrieval:
+    1. Takes initial results from ChromaDB.
+    2. Reranks them using the CrossEncoder.
+    3. Returns the top_k most relevant results.
+    """
+    reranker_model = CrossEncoder(f"{MODEL_DIR}/reranker_model", device=device) 
+    if not results['documents'][0]:
+        return results
+    captions = []
+    metadata = results['metadatas'][0]
+    
+    metadatas = results['metadatas'][0]
+    distances = results['distances'][0]
+    
+    for dic in metadata:
+        for key, val in dic.items():
+            if key == "caption":
+                captions.append(val)
+    pairs = [[query, caption] for caption in captions]
+    scores = reranker_model.predict(pairs)
+
+    ranked = sorted(zip(captions, metadatas, distances, scores), key=lambda x: x[3], reverse=True)
+
+    final_cap = []
+    final_metas = []
+    final_dists = []
+
+    for cap, meta, dist, score in ranked[:top_k]:
+        meta['relevance_score'] = float(score)
+        final_cap.append(cap)
+        final_metas.append(meta)
+        final_dists.append(dist)
+
+    return {
+        'captions': [final_cap],
+        'metadatas': [final_metas],
+        'distances': [final_dists]
+    }
+    

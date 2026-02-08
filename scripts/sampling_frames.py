@@ -1,31 +1,33 @@
-from io import BytesIO
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from utils.utils import genrate_caption
+
+from io import BytesIO
+from utils.utils import generate_caption, device
 import cv2
 from transformers import CLIPProcessor, CLIPModel, BlipProcessor, BlipForConditionalGeneration
 import torch
 from app.vector_db import frame_embedding_collection
-# from app.prompts import BLIP_CUSTOM_PROMPT
+from tqdm import tqdm
 from dotenv import load_dotenv
 from PIL import Image
-from tqdm import tqdm
 load_dotenv()
 
-CLIP_MODEL = os.getenv(key = 'CLIP_MODEL')
-BLIP_MODEL = os.getenv(key = 'BLIP_MODEL')
 INPUT_VIDEO = os.getenv(key = 'INPUT_VIDEO')
+MODEL_CACHE_DIR = os.getenv(key = 'MODEL_CACHE_DIR')
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
-print("Device: ", device)
+if INPUT_VIDEO is None:
+    raise RuntimeError("INPUT_VIDEO path is not set")
+elif MODEL_CACHE_DIR is None:
+    raise RuntimeError("CLIP_CACHE path is not set")
 
-clip_model = CLIPModel.from_pretrained(CLIP_MODEL,
-                                       use_safetensors=True).to(device)
-clip_processor = CLIPProcessor.from_pretrained(CLIP_MODEL)
+clip_path = os.path.join(MODEL_CACHE_DIR, "clip_model")
+clip_model = CLIPModel.from_pretrained(clip_path, local_files_only= True).to(device)
+clip_processor = CLIPProcessor.from_pretrained(clip_path, local_files_only=True)
 
-# blip_processor = BlipProcessor.from_pretrained(BLIP_MODEL)
-# blip_model = BlipForConditionalGeneration.from_pretrained(BLIP_MODEL).to(device)
+blip_path = os.path.join(MODEL_CACHE_DIR, "blip_model")
+blip_processor = BlipProcessor.from_pretrained(blip_path, local_files_only=True)
+blip_model = BlipForConditionalGeneration.from_pretrained(blip_path, local_files_only=True).to(device)
 
 
 def uniform_frame_sampling(path: str):
@@ -36,30 +38,32 @@ def uniform_frame_sampling(path: str):
     embeddings = []
     metadatas = []
     ids = []
-    buffer = BytesIO()
+    # buffer = BytesIO()
     with tqdm(total=total_frames, desc="Processing frames") as pbar:
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
                 break
-            if frame_no % int(round(fps)) == 0:
+            if frame_no % int(fps) == 0:
                 timestamp_sec = cap.get(cv2.CAP_PROP_POS_MSEC) 
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 image = Image.fromarray(frame)
                 inputs = clip_processor(images = image, return_tensors = 'pt').to(device)
-                caption=genrate_caption(image,buffer)
-            # print(caption)
-                #blip_input = blip_processor(images = image, return_tensors = 'pt').to(device)
+                # caption=generate_caption(image,buffer)
+                # print(caption)
+                blip_input = blip_processor(images = image,
+                                            text="Describe the scene in a factual, objective manner.",
+                                            return_tensors = 'pt').to(device)
                 with torch.no_grad():
                     outputs = clip_model.get_image_features(inputs.pixel_values)
-                #     blip_outputs = blip_model.generate(**blip_input,
-                #                                        max_length = 500,
-                #                                        min_length = 150,
-                #                                        no_repeat_ngram_size=2,
-                #                                        num_beams = 5,
-                #                                        )
+                    blip_outputs = blip_model.generate(**blip_input,
+                                                       max_length = 60,
+                                                       min_length = 20,
+                                                       no_repeat_ngram_size=2,
+                                                       num_beams = 5,
+                                                       )
                 
-                # caption = blip_processor.decode(blip_outputs[0], skip_special_tokens=True)
+                caption = blip_processor.decode(blip_outputs[0], skip_special_tokens=True)
                 image_embedding = outputs.pooler_output
                 image_embedding = image_embedding / image_embedding.norm(dim = -1, keepdim= True)
                 image_embedding = image_embedding.squeeze(0).cpu().numpy().tolist()
@@ -78,13 +82,9 @@ def uniform_frame_sampling(path: str):
                 
             frame_no +=1
             pbar.update(1)
-    cap.release()
-            
     return embeddings, metadatas, ids
 
 embeddings, metadatas, ids = uniform_frame_sampling(path = INPUT_VIDEO)
-print(len(embeddings[0]))
-
 frame_embedding_collection.add(
     ids = ids,
     embeddings= embeddings,
