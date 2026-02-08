@@ -5,17 +5,18 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from transformers import CLIPProcessor, CLIPModel
 from app.vector_db import frame_embedding_collection
+from utils.utils import device
 import torch
 from dotenv import load_dotenv
 
 load_dotenv()
 
-CLIP_MODEL = os.getenv("CLIP_MODEL")
-
-device = "cuda" if torch.cuda.is_available() else "cpu"
-
-model = CLIPModel.from_pretrained(CLIP_MODEL).to(device)
-processor = CLIPProcessor.from_pretrained(CLIP_MODEL)
+MODEL_DIR = os.getenv("MODEL_CACHE_DIR")
+if MODEL_DIR is None:
+    raise RuntimeError("MODEL_DIR path not found")
+clip_path = os.path.join(MODEL_DIR, "clip_model")
+model = CLIPModel.from_pretrained(clip_path,local_files_only=True).to(device)
+processor = CLIPProcessor.from_pretrained(clip_path, local_files_only=True)
 
 def query_search(prompt: str):
     text_embedding  = processor(text = [prompt], return_tensors = 'pt').to(device)
@@ -32,6 +33,7 @@ text_vector = query_search('person explains limit of x to the power h minus 1  d
 print(len(text_vector))
 results = frame_embedding_collection.query(
     query_embeddings=[text_vector],
-    n_results= 5
+    n_results= 5,
+    include = ["metadatas", "embeddings", "distances", "documents"]
 )
-print(results["metadatas"])
+print(results)

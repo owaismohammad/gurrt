@@ -15,6 +15,13 @@ dependencies = [
     "pillow>=12.1.0",
     "chromadb>=1.4.1",
     "ollama>=0.6.1",
+    "langchain>=1.2.9",
+    "langchain-groq>=1.1.2",
+    "moviepy>=1.0.3",
+    "sentence-transformers>=5.2.2",
+    "tqdm>=4.67.3",
+    "scenedetect>=0.6.7.1",
+    "scikit-image>=0.26.0",
 ]
 
 
