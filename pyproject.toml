@@ -16,6 +16,7 @@ dependencies = [
     "chromadb>=1.4.1",
     "ollama>=0.6.1",
     "tqdm>=4.67.3",
+    "easyocr>=1.7.2",
 ]
 
 
