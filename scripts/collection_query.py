@@ -1,5 +1,6 @@
 import sys
 import os
+from typing import Any, Dict
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dotenv import load_dotenv
@@ -21,7 +22,7 @@ processor = CLIPProcessor.from_pretrained(clip_path, local_files_only=True)
 
 
 
-def query_frame_collection(query: str, n_results: int = 10) -> list:
+def query_frame_collection(query: str, n_results: int = 10) -> Dict[str, Any]:
     text_embedding  = processor(text = [query], return_tensors = 'pt').to(device)
     
     with torch.no_grad():
@@ -37,8 +38,19 @@ def query_frame_collection(query: str, n_results: int = 10) -> list:
 )   
     results_reranked = rerank(query, results, n_results)
     
-    captions_list = results_reranked["captions"]
-    return captions_list
+    # captions_list = results_reranked["captions"]
+    # return captions_list
+    return results_reranked
+
+def caption_frame_collection(results_reranked: Dict[str, Any]) -> list:
+    caption_list = []
+    results_ids = results_reranked["ids"][0]
+    metadatas = results_reranked["metadatas"][0]
+    for i, metadata in enumerate(metadatas):
+        if metadata["caption"]:
+            caption_list.append(metadata["caption"])
+                
+    return caption_list
 
 def query_asr_collection():
     pass
