@@ -40,7 +40,8 @@ def scene_detection_frame_sampling(INPUT_VIDEO, clip_model, clip_processor, blip
                                                        clip_processor= clip_processor, 
                                                        blip_model= blip_model, 
                                                        blip_processor= blip_processor)
-    
+    print(caption_list [:10
+                        ])
     metadatas = []
     for i in range(len(caption_list)):
         metadatas.append({
@@ -52,8 +53,8 @@ def scene_detection_frame_sampling(INPUT_VIDEO, clip_model, clip_processor, blip
                 })
     return embeddings_list, metadatas, ids
 embeddings, metadatas, ids = scene_detection_frame_sampling(INPUT_VIDEO, clip_model, clip_processor, blip_processor, blip_model)
-frame_embedding_collection.add(
-    ids = ids,
-    embeddings= embeddings,
-    metadatas= metadatas,
-)
+# frame_embedding_collection.add(
+#     ids = ids,
+#     embeddings= embeddings,
+#     metadatas= metadatas,
+# )

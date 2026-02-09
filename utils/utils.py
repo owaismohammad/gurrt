@@ -58,13 +58,13 @@ def generate_captions_in_batches(batch_of_frames, clip_model, clip_processor, bl
         clip_outputs = clip_outputs.pooler_output
         clip_embeddings = clip_outputs / clip_outputs.norm(p=2, dim=-1, keepdim=True)
         blip_output_ids = blip_model.generate(**blip_inputs,
-                                        # max_length = 80,
-                                        # min_length = 30,
-                                        # no_repeat_ngram_size=3,
-                                        # repetition_penalty=1.5,
-                                        # early_stopping=True,
-                                        # do_sample=False,
-                                        # num_beams = 5,
+                                        max_length = 300,
+                                        min_length = 100,
+                                        no_repeat_ngram_size=3,
+                                        repetition_penalty=1.5,
+                                        early_stopping=True,
+                                        do_sample=False,
+                                        num_beams = 3,
                                         )
         captions = blip_processor.batch_decode(blip_output_ids, skip_special_tokens=True)
 
