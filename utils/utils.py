@@ -7,6 +7,12 @@ from ollama import chat
 import moviepy as mp
 from sentence_transformers import CrossEncoder
 import torch
+import cv2
+from tqdm import tqdm
+from PIL import Image
+from scenedetect import open_video, SceneManager
+import scenedetect
+from scenedetect.detectors import ContentDetector
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -30,6 +36,90 @@ def audio_extraction(path: str):
     video.close()
     return audio_file
 
+def scene_split(video_path):
+    print("--- Detecting shot boundaries with PySceneDetect ---")
+    video = open_video(video_path)
+    scene_manager = SceneManager()
+    scene_manager.add_detector(ContentDetector())
+
+    try:
+        scene_manager.detect_scenes(video, show_progress=True)
+        scene_list = scene_manager.get_scene_list()
+    except Exception as e:
+        print("Scene detection failed:", e)
+        scene_list = []
+    return scene_list
+
+def generate_captions_in_batches(batch_of_frames, clip_model, clip_processor, blip_model, blip_processor, device="cuda"):
+    clip_inputs = clip_processor(images=batch_of_frames, return_tensors="pt").to(device)
+    blip_inputs = blip_processor(images = batch_of_frames, return_tensors = 'pt').to(device)
+    with torch.no_grad():
+        clip_outputs = clip_model.get_image_features(clip_inputs.pixel_values)
+        clip_outputs = clip_outputs.pooler_output
+        clip_embeddings = clip_outputs / clip_outputs.norm(p=2, dim=-1, keepdim=True)
+        blip_output_ids = blip_model.generate(**blip_inputs,
+                                        # max_length = 80,
+                                        # min_length = 30,
+                                        # no_repeat_ngram_size=3,
+                                        # repetition_penalty=1.5,
+                                        # early_stopping=True,
+                                        # do_sample=False,
+                                        # num_beams = 5,
+                                        )
+        captions = blip_processor.batch_decode(blip_output_ids, skip_special_tokens=True)
+
+   
+            
+    embeddings_list = clip_embeddings.cpu().numpy().tolist()
+    del clip_inputs, blip_inputs, clip_outputs, blip_output_ids
+    torch.cuda.empty_cache()        
+
+    return captions, embeddings_list
+
+def frame_listing(scene_list, video_path):
+    cap = cv2.VideoCapture(video_path)
+    fps = cap.get(cv2.CAP_PROP_FPS)   
+    ids = []
+    frame_PIL = []
+    timestamps_list = []
+    
+    with tqdm(total = len(scene_list), desc="processing frames ") as pbar: 
+        for i, scene in enumerate(scene_list):
+            start_time, end_time = scene[0].get_seconds(), scene[1].get_seconds()
+            mid_time = (start_time + end_time) / 2
+            timestamps = [start_time, mid_time, end_time]
+            labels = ["initial", "middle", "final"]
+            
+            for t, label in zip(timestamps, labels):
+                cap.set(cv2.CAP_PROP_POS_MSEC, t * 1000)
+                ret, frame = cap.read()
+                
+                if ret:
+                    img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                    image = Image.fromarray(img_rgb)
+                    frame_PIL.append(image)
+                    timestamps_list.append(t)
+                    frame_id = f"{video_path}:{t}"
+                    ids.append(frame_id)
+            pbar.update(1)
+    return frame_PIL, timestamps_list, ids, fps
+
+def batched_captioning(frame_list: list, batch_size: int, clip_model, clip_processor, blip_model, blip_processor):
+    caption_list = []
+    embedding_list = []
+    
+    with tqdm(total = int(len(frame_list)/ batch_size), desc = "Batched image captioning") as pbar:
+        for i in range(0, len(frame_list),batch_size):
+            batch = frame_list[i:i+batch_size]
+            caption , embedding = generate_captions_in_batches(batch, 
+                                                            clip_model= clip_model,
+                                                            clip_processor= clip_processor,
+                                                            blip_model= blip_model,
+                                                            blip_processor= blip_processor)
+            caption_list.extend(caption)
+            embedding_list.extend(embedding)
+            pbar.update(1)
+    return caption_list, embedding_list           
 
 def generate_caption(frame,buffer):
     frame.save(buffer, format="JPEG")
@@ -95,3 +185,57 @@ def rerank(query: str, results: Dict[str, Any], top_k: int = 5) -> Dict[str, Any
         'distances': [final_dists]
     }
     
+    
+def uniform_frame_sampling(path: str, clip_model, clip_processor, blip_processor, blip_model):
+    cap= cv2.VideoCapture(path)
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    frame_no = 0
+    embeddings = []
+    metadatas = []
+    ids = []
+    # buffer = BytesIO()
+    with tqdm(total=total_frames, desc="Processing frames") as pbar:
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                break
+            if frame_no % int(fps) == 0:
+                timestamp_sec = cap.get(cv2.CAP_PROP_POS_MSEC) 
+                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                image = Image.fromarray(frame)
+                inputs = clip_processor(images = image, return_tensors = 'pt').to(device)
+                # caption=generate_caption(image,buffer)
+                # print(caption)
+                blip_input = blip_processor(images = image,
+                                            text="Describe the scene in a factual, objective manner.",
+                                            return_tensors = 'pt').to(device)
+                with torch.no_grad():
+                    outputs = clip_model.get_image_features(inputs.pixel_values)
+                    blip_outputs = blip_model.generate(**blip_input,
+                                                       max_length = 60,
+                                                       min_length = 20,
+                                                       no_repeat_ngram_size=2,
+                                                       num_beams = 5,
+                                                       )
+                
+                caption = blip_processor.decode(blip_outputs[0], skip_special_tokens=True)
+                image_embedding = outputs.pooler_output
+                image_embedding = image_embedding / image_embedding.norm(dim = -1, keepdim= True)
+                image_embedding = image_embedding.squeeze(0).cpu().numpy().tolist()
+                frame_id = f"{path}:{timestamp_sec}"
+                
+                ids.append(frame_id)
+                embeddings.append(image_embedding)
+
+                metadatas.append({
+                    "frame_idx": frame_no,
+                    "caption": caption,
+                    "timestamp_ms": timestamp_sec,
+                    "fps": fps,
+                    "source_path": path
+                })
+                
+            frame_no +=1
+            pbar.update(1)
+    return embeddings, metadatas, ids

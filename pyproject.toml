@@ -23,6 +23,7 @@ dependencies = [
     "scenedetect>=0.6.7.1",
     "scikit-image>=0.26.0",
     "ipykernel>=7.2.0",
+    "easyocr>=1.7.2",
 ]
 
 
