@@ -3,8 +3,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.prompts import LLM_QUERY_PROMPT
-from scripts.collection_query import query_asr_collection, query_frame_collection, query_ocr_collection
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from scripts.collections_query import query_asr_collection, query_frame_collection, query_ocr_collection
 
 from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate
@@ -20,6 +19,7 @@ llm = ChatGroq(
     model = "llama-3.1-8b-instant",
     max_tokens= 4096,
 )
+
 
 def query_llm(query:str) -> str:
     caption_list = query_frame_collection(query= query)
