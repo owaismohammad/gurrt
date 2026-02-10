@@ -14,21 +14,21 @@ from utils.utils import scene_split, frame_listing, batched_captioning
 from PIL import Image
 load_dotenv()
 
-# INPUT_VIDEO = os.getenv(key = 'INPUT_VIDEO')
-# MODEL_CACHE_DIR = os.getenv(key = 'MODEL_CACHE_DIR')
+INPUT_VIDEO = os.getenv(key = 'INPUT_VIDEO')
+MODEL_CACHE_DIR = os.getenv(key = 'MODEL_CACHE_DIR')
 
-# if INPUT_VIDEO is None:
-#     raise RuntimeError("INPUT_VIDEO path is not set")
-# elif MODEL_CACHE_DIR is None:
-#     raise RuntimeError("CLIP_CACHE path is not set")
+if INPUT_VIDEO is None:
+    raise RuntimeError("INPUT_VIDEO path is not set")
+elif MODEL_CACHE_DIR is None:
+    raise RuntimeError("CLIP_CACHE path is not set")
 
-# clip_path = os.path.join(MODEL_CACHE_DIR, "clip_model")
-# clip_model = CLIPModel.from_pretrained(clip_path, local_files_only= True).to(device)
-# clip_processor = CLIPProcessor.from_pretrained(clip_path, local_files_only=True)
+clip_path = os.path.join(MODEL_CACHE_DIR, "clip_model")
+clip_model = CLIPModel.from_pretrained(clip_path, local_files_only= True).to(device)
+clip_processor = CLIPProcessor.from_pretrained(clip_path, local_files_only=True)
 
-# blip_path = os.path.join(MODEL_CACHE_DIR, "blip_model")
-# blip_processor = BlipProcessor.from_pretrained(blip_path, local_files_only=True)
-# blip_model = BlipForConditionalGeneration.from_pretrained(blip_path, local_files_only=True).to(device)
+blip_path = os.path.join(MODEL_CACHE_DIR, "blip_model")
+blip_processor = BlipProcessor.from_pretrained(blip_path, local_files_only=True)
+blip_model = BlipForConditionalGeneration.from_pretrained(blip_path, local_files_only=True).to(device)
 
 def scene_detection_frame_sampling(INPUT_VIDEO, clip_model, clip_processor, blip_processor, blip_model):
     scene_list = scene_split(INPUT_VIDEO)
