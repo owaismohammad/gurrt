@@ -1,7 +1,7 @@
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
+import yt_dlp
 from typing import Dict, Any
 from ollama import chat
 import moviepy as mp
@@ -239,3 +239,39 @@ def uniform_frame_sampling(path: str, clip_model, clip_processor, blip_processor
             frame_no +=1
             pbar.update(1)
     return embeddings, metadatas, ids
+
+
+
+# def download_video_audio(url):
+#     try:
+#         download_dir = "./outputs"  # Change to your existing directory
+#         os.makedirs(download_dir, exist_ok=True)
+#         video_opts = {
+#     '       outtmpl': f'{download_dir}/%(title)s_video.%(ext)s',  # Full path in template
+#             'format': 'bestvideo[height<=720]/bestvideo',
+#         }
+
+#         audio_opts = {
+#             'outtmpl': f'{download_dir}/%(title)s_audio.%(ext)s',
+#             'format': 'bestaudio/best',
+#             'postprocessors': [{
+#                 'key': 'FFmpegExtractAudio',
+#                 'preferredcodec': 'mp3',
+#                 'preferredquality': '192',
+#             }],
+        
+#         }
+#         print("Downloading video...")
+#         with yt_dlp.YoutubeDL(video_opts) as ydl:
+#             ydl.download([url])
+
+#         print("Downloading audio...")
+#         with yt_dlp.YoutubeDL(audio_opts) as ydl:
+#             ydl.download([url])
+#         print(f"Complete! Files in: {download_dir}")
+
+#     except Exception as e:
+#         print("unable to download video",e)
+        
+
+# download_video_audio("https://youtu.be/8fZJs0Z-2O8?si=6DAkZUOgmVVCcwYe")        
