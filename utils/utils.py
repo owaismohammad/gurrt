@@ -136,6 +136,17 @@ def batched_captioning(frame_list: list, batch_size: int, clip_model, clip_proce
             pbar.update(1)
     return caption_list, embedding_list           
 
+
+def caption_frame_collection(results_reranked: Dict[str, Any]) -> list:
+    caption_list = []
+    results_ids = results_reranked["ids"][0]
+    metadatas = results_reranked["metadatas"][0]
+    for i, metadata in enumerate(metadatas):
+        if metadata["caption"]:
+            caption_list.append(metadata["caption"])
+                
+    return caption_list
+
 # def generate_caption(frame,buffer):
 #     frame.save(buffer, format="JPEG")
 #     img_bytes = buffer.getvalue()
