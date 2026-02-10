@@ -6,7 +6,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dotenv import load_dotenv
 from transformers import CLIPProcessor, CLIPModel
 from utils.utils import device, rerank
-from app.vector_db import frame_embedding_collection
+from app.vector_db import frame_embedding_collection, asr_collection
 import torch
 load_dotenv()
 
@@ -22,7 +22,7 @@ processor = CLIPProcessor.from_pretrained(clip_path, local_files_only=True)
 
 
 
-def query_frame_collection(query: str, n_results: int = 10) -> Dict[str, Any]:
+def query_collection(query: str, n_results: int = 10):
     text_embedding  = processor(text = [query], return_tensors = 'pt').to(device)
     
     with torch.no_grad():
@@ -38,9 +38,14 @@ def query_frame_collection(query: str, n_results: int = 10) -> Dict[str, Any]:
 )   
     results_reranked = rerank(query, results, n_results)
     
-    # captions_list = results_reranked["captions"]
-    # return captions_list
-    return results_reranked
+    results_audio = asr_collection.query(
+    query_embeddings=[text_features],
+    n_results= n_results
+)   
+    results_reranked_audio = rerank(query, results_audio, n_results)
+    
+    captions_list = caption_frame_collection(results_reranked)
+    return results_reranked, results_reranked_audio
 
 def caption_frame_collection(results_reranked: Dict[str, Any]) -> list:
     caption_list = []
@@ -52,9 +57,4 @@ def caption_frame_collection(results_reranked: Dict[str, Any]) -> list:
                 
     return caption_list
 
-def query_asr_collection():
-    pass
-
-def query_ocr_collection():
-    pass
-
+def asr_
