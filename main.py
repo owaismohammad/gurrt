@@ -1,6 +1,6 @@
 import cv2
 from utils.utils import uniform_frame_sampling, mapping_frame_with_timestamp, using_clip
-from scripts.sampling_frames import uniform_frame_sampling
+from scripts.video_embedding_pipeline import uniform_frame_sampling
 path = './This Integral Breaks Math.mp4'
 
 # sampled_video_path, sampled_timestamp = uniform_frame_sampling(path=path)
