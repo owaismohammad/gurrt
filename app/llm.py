@@ -23,11 +23,10 @@ llm = ChatGroq(
 
 def query_llm(query:str) -> str:
     caption_list, asr_list = query_collection(query= query , n_results= 10)
-    # asr_list = query_asr_collection()
-    # ocr_list = query_ocr_collection()
     
-    context_caption = "\n".join(caption_list[0])
-    asr_text = "\n".join(asr_list[0])
+    
+    context_caption = "\n".join(caption_list)
+    asr_text = "\n".join(asr_list)
     parser = StrOutputParser()
     prompt = PromptTemplate(
         template = LLM_QUERY_PROMPT,
