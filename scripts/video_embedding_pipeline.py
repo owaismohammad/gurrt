@@ -2,14 +2,9 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from io import BytesIO
 from utils.utils import device
-import cv2
 from transformers import CLIPProcessor, CLIPModel, BlipProcessor, BlipForConditionalGeneration
-import torch    
 from app.vector_db import frame_embedding_collection
-from tqdm import tqdm
-from PIL import Image
 from utils.utils import scene_split, frame_listing, batched_captioning
 from dotenv import load_dotenv
 

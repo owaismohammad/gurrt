@@ -29,7 +29,6 @@ def audio_extraction(path: str):
     audio_file = 'outputs/audio_file.mp3'
     video = mp.VideoFileClip(path)
     audio = video.audio
-    
     audio.write_audiofile(audio_file)
     
     audio.close()
@@ -139,7 +138,6 @@ def batched_captioning(frame_list: list, batch_size: int, clip_model, clip_proce
 
 def caption_frame_collection(results_reranked: Dict[str, Any]) -> list:
     caption_list = []
-    # results_ids = results_reranked["ids"][0]
     metadatas = results_reranked["metadatas"][0]
     for i, metadata in enumerate(metadatas):
         if metadata["caption"]:
@@ -170,7 +168,7 @@ def caption_frame_collection(results_reranked: Dict[str, Any]) -> list:
 
 
 
-def rerank(query: str, results: Dict[str, Any],MODEL_DIR:str, top_k: int = 5) -> Dict[str, Any]:
+def rerank(query: str, results: Dict[str, Any], MODEL_DIR:str, top_k: int = 10) -> Dict[str, Any]:
     """
     Performs 'Rank CoT' retrieval:
     1. Takes initial results from ChromaDB.
@@ -211,7 +209,41 @@ def rerank(query: str, results: Dict[str, Any],MODEL_DIR:str, top_k: int = 5) ->
         'distances': [final_dists]
     }
     
-    
+def rerank_docs(query: str, results: Dict[str, Any], MODEL_DIR, top_k: int = 10) -> Dict[str, Any]:
+    """
+    Performs 'Rank CoT' retrieval:
+    1. Takes initial results from ChromaDB.
+    2. Reranks them using the CrossEncoder.
+    3. Returns the top_k most relevant results.
+    """
+    reranker_model = CrossEncoder(f"{MODEL_DIR}/reranker_model", device=device)
+    if not results['documents'][0]:
+        return results
+
+    documents = results['documents'][0]
+    metadatas = results['metadatas'][0]
+    distances = results['distances'][0]
+
+    pairs = [[query, doc] for doc in documents]
+    scores = reranker_model.predict(pairs)
+
+    ranked = sorted(zip(documents, metadatas, distances, scores), key=lambda x: x[3], reverse=True)
+
+    final_docs = []
+    final_metas = []
+    final_dists = []
+
+    for doc, meta, dist, score in ranked[:top_k]:
+        meta['relevance_score'] = float(score)
+        final_docs.append(doc)
+        final_metas.append(meta)
+        final_dists.append(dist)
+
+    return {
+        'documents': [final_docs],
+        'metadatas': [final_metas],
+        'distances': [final_dists]
+    }    
 # def uniform_frame_sampling(path: str, clip_model, clip_processor, blip_processor, blip_model):
 #     cap= cv2.VideoCapture(path)
 #     fps = cap.get(cv2.CAP_PROP_FPS)

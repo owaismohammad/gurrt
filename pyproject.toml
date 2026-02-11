@@ -28,6 +28,9 @@ dependencies = [
     "openai-whisper>=20250625",
     "faster-whisper>=1.2.1",
     "langchain-text-splitters>=1.1.0",
+    "fastapi>=0.128.7",
+    "pydantic>=2.12.5",
+    "supermemory>=3.24.0",
 ]
 
 

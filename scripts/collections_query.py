@@ -5,7 +5,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dotenv import load_dotenv
 from transformers import CLIPProcessor, CLIPModel
-from utils.utils import device, rerank, caption_frame_collection
+from utils.utils import device, rerank, rerank_docs, caption_frame_collection
 from app.vector_db import frame_embedding_collection, asr_collection
 import torch
 load_dotenv()
@@ -36,14 +36,13 @@ def query_collection(query: str, n_results: int = 10):
     query_embeddings=[text_features],
     n_results= n_results
 )   
-    results_reranked = rerank(query, results,MODEL_CACHE_DIR, n_results)
+    results_reranked = rerank(query, results, MODEL_CACHE_DIR, n_results)
     
     results_audio = asr_collection.query(
     query_embeddings=[text_features],
     n_results= n_results
 )   
-    results_reranked_audio = rerank(query, results_audio,MODEL_CACHE_DIR, n_results)
-    
+    results_reranked_audio = rerank_docs(query, results_audio, MODEL_CACHE_DIR, n_results)
     captions_list = caption_frame_collection(results_reranked)
     print(results_audio["documents"])
     
