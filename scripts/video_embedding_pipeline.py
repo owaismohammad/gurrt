@@ -2,18 +2,18 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# from io import BytesIO
-# from utils.utils import device
-# import cv2
-# from transformers import CLIPProcessor, CLIPModel, BlipProcessor, BlipForConditionalGeneration
-# import torch    
-# from app.vector_db import frame_embedding_collection
-# from tqdm import tqdm
-# from PIL import Image
+from io import BytesIO
+from utils.utils import device
+import cv2
+from transformers import CLIPProcessor, CLIPModel, BlipProcessor, BlipForConditionalGeneration
+import torch    
+from app.vector_db import frame_embedding_collection
+from tqdm import tqdm
+from PIL import Image
 from utils.utils import scene_split, frame_listing, batched_captioning
-# from dotenv import load_dotenv
+from dotenv import load_dotenv
 
-# load_dotenv()
+load_dotenv()
 
 INPUT_VIDEO = os.getenv(key = 'INPUT_VIDEO')
 MODEL_CACHE_DIR = os.getenv(key = 'MODEL_CACHE_DIR')
@@ -53,9 +53,9 @@ def scene_detection_frame_sampling(INPUT_VIDEO, clip_model, clip_processor, blip
     print("METADATA_LIST_LENGTH:- ",len(metadatas))
     print("IDS_LIST_LENGTH:- ",len(ids))
     return embeddings_list, metadatas, ids
-# embeddings, metadatas, ids = scene_detection_frame_sampling(INPUT_VIDEO, clip_model, clip_processor, blip_processor, blip_model)
-# frame_embedding_collection.add(
-#     ids = ids,
-#     embeddings= embeddings,
-#     metadatas= metadatas,
-# )
+embeddings, metadatas, ids = scene_detection_frame_sampling(INPUT_VIDEO, clip_model, clip_processor, blip_processor, blip_model)
+frame_embedding_collection.add(
+    ids = ids,
+    embeddings= embeddings,
+    metadatas= metadatas,
+)

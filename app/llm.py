@@ -26,20 +26,22 @@ def query_llm(query:str) -> str:
     # asr_list = query_asr_collection()
     # ocr_list = query_ocr_collection()
     
-    context_caption = "\n".join(caption_list[0])
-    asr_text = "\n".join(asr_list[0])
-    parser = StrOutputParser()
-    prompt = PromptTemplate(
-        template = LLM_QUERY_PROMPT,
-        input_variables = ["frame_context", "asr_context","query"]
-    )
-    chain = prompt | llm | parser
-    result = chain.invoke({
-        "frame_context": context_caption,
-        "asr_context": asr_text,
-        "query" : query
-    })
-    return result
+    # context_caption = "\n".join(caption_list[0])
+    # asr_text = "\n".join(asr_list[0])
+    # parser = StrOutputParser()
+    # prompt = PromptTemplate(
+    #     template = LLM_QUERY_PROMPT,
+    #     input_variables = ["frame_context", "asr_context","query"]
+    # )
+    # chain = prompt | llm | parser
+    # result = chain.invoke({
+    #     "frame_context": context_caption,
+    #     "asr_context": asr_text,
+    #     "query" : query
+    # })
+    print(caption_list)
+    print(asr_list)
+    # return result
 
 
 result = query_llm("what does the person really mean by when he is taking the limit x raise to the power of h minus 1 divided by h")

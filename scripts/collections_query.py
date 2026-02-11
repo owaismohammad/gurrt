@@ -36,15 +36,17 @@ def query_collection(query: str, n_results: int = 10):
     query_embeddings=[text_features],
     n_results= n_results
 )   
-    results_reranked = rerank(query, results, n_results)
+    results_reranked = rerank(query, results,MODEL_CACHE_DIR, n_results)
     
     results_audio = asr_collection.query(
     query_embeddings=[text_features],
     n_results= n_results
 )   
-    results_reranked_audio = rerank(query, results_audio, n_results)
+    results_reranked_audio = rerank(query, results_audio,MODEL_CACHE_DIR, n_results)
     
     captions_list = caption_frame_collection(results_reranked)
+    print(results_audio["documents"])
+    
     
     asr_list = results_reranked_audio["documents"][0]
     return captions_list, asr_list
