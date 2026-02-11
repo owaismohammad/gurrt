@@ -27,7 +27,7 @@ client_memory = Supermemory(
     api_key=SUPERMEMORY_API_KEY,
 )
 
-def query_llm(query:str) -> str:
+async def query_llm(query:str) -> str:
     caption_list, asr_list = query_collection(query= query , n_results= 10)
 
     context_caption = "\n".join(caption_list)
@@ -41,10 +41,10 @@ def query_llm(query:str) -> str:
         }
     )
     client_memory.add(
-        content = asr_text,
+        content = context_caption,
         container_tags = ["Video-Rag"],
         metadata = {
-            "note_id": "Retrieved Transcript"
+            "note_id": "Retrieved Audio"
         }
     )
     context = client_memory.search.documents(
@@ -64,6 +64,10 @@ def query_llm(query:str) -> str:
     })
     return result
 
+def delete():
+    client_memory.documents.delete_bulk(container_tags=["Video-Rag"])
 
-result = query_llm("tell me what exactly is the video talking about in 10 points az")
-print(result)
+# result = query_llm("tell me what exactly is the video talking about in 10 points az")
+# print(result)
+# delete()
+

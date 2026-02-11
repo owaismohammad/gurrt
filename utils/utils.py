@@ -29,7 +29,6 @@ def audio_extraction(path: str):
     audio_file = 'outputs/audio_file.mp3'
     video = mp.VideoFileClip(path)
     audio = video.audio
-    
     audio.write_audiofile(audio_file)
     
     audio.close()
