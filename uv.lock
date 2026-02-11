@@ -25,6 +25,15 @@ wheels = [
 ]
 
 [[package]]
+name = "annotated-doc"
+version = "0.0.4"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/57/ba/046ceea27344560984e26a590f90bc7f4a75b06701f653222458922b558c/annotated_doc-0.0.4.tar.gz", hash = "sha256:fbcda96e87e9c92ad167c2e53839e57503ecfda18804ea28102353485033faa4", size = 7288, upload-time = "2025-11-10T22:07:42.062Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1e/d3/26bf1008eb3d2daa8ef4cacc7f3bfdc11818d111f7e2d0201bc6e3b49d45/annotated_doc-0.0.4-py3-none-any.whl", hash = "sha256:571ac1dc6991c450b25a9c2d84a3705e2ae7a53467b5d111c24fa8baabbed320", size = 5303, upload-time = "2025-11-10T22:07:40.673Z" },
+]
+
+[[package]]
 name = "annotated-types"
 version = "0.7.0"
 source = { registry = "https://pypi.org/simple" }
@@ -509,6 +518,22 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/cc/28/c14e053b6762b1044f34a13aab6859bbf40456d37d23aa286ac24cfd9a5d/executing-2.2.1.tar.gz", hash = "sha256:3632cc370565f6648cc328b32435bd120a1e4ebb20c77e3fdde9a13cd1e533c4", size = 1129488, upload-time = "2025-09-01T09:48:10.866Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c1/ea/53f2148663b321f21b5a606bd5f191517cf40b7072c0497d3c92c4a13b1e/executing-2.2.1-py2.py3-none-any.whl", hash = "sha256:760643d3452b4d777d295bb167ccc74c64a81df23fb5e08eff250c425a4b2017", size = 28317, upload-time = "2025-09-01T09:48:08.5Z" },
+]
+
+[[package]]
+name = "fastapi"
+version = "0.128.7"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "annotated-doc" },
+    { name = "pydantic" },
+    { name = "starlette" },
+    { name = "typing-extensions" },
+    { name = "typing-inspection" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a0/fc/af386750b3fd8d8828167e4c82b787a8eeca2eca5c5429c9db8bb7c70e04/fastapi-0.128.7.tar.gz", hash = "sha256:783c273416995486c155ad2c0e2b45905dedfaf20b9ef8d9f6a9124670639a24", size = 375325, upload-time = "2026-02-10T12:26:40.968Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/af/1a/f983b45661c79c31be575c570d46c437a5409b67a939c1b3d8d6b3ed7a7f/fastapi-0.128.7-py3-none-any.whl", hash = "sha256:6bd9bd31cb7047465f2d3fa3ba3f33b0870b17d4eaf7cdb36d1576ab060ad662", size = 103630, upload-time = "2026-02-10T12:26:39.414Z" },
 ]
 
 [[package]]
@@ -3072,6 +3097,36 @@ wheels = [
 ]
 
 [[package]]
+name = "starlette"
+version = "0.52.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c4/68/79977123bb7be889ad680d79a40f339082c1978b5cfcf62c2d8d196873ac/starlette-0.52.1.tar.gz", hash = "sha256:834edd1b0a23167694292e94f597773bc3f89f362be6effee198165a35d62933", size = 2653702, upload-time = "2026-01-18T13:34:11.062Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/81/0d/13d1d239a25cbfb19e740db83143e95c772a1fe10202dda4b76792b114dd/starlette-0.52.1-py3-none-any.whl", hash = "sha256:0029d43eb3d273bc4f83a08720b4912ea4b071087a3b48db01b7c839f7954d74", size = 74272, upload-time = "2026-01-18T13:34:09.188Z" },
+]
+
+[[package]]
+name = "supermemory"
+version = "3.24.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+    { name = "distro" },
+    { name = "httpx" },
+    { name = "pydantic" },
+    { name = "sniffio" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/11/67/ea1a675b5183cf0da4d0d7811e0c5f8830b07cd427f9fb9b4d4942b2d88d/supermemory-3.24.0.tar.gz", hash = "sha256:c891816309331deca26c98bd2547ef6669ad10f42bf35149c7311af41254a788", size = 154131, upload-time = "2026-02-09T07:21:01.984Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b4/d8/a2fae1e1681793dc61ae592757c272264250bebe4500c2e2386b1f69eb16/supermemory-3.24.0-py3-none-any.whl", hash = "sha256:823b375c7581af7573dbf8cf8f3a517674bef3c78abcc45af7f66e3f8b635db7", size = 139993, upload-time = "2026-02-09T07:21:00.368Z" },
+]
+
+[[package]]
 name = "sympy"
 version = "1.13.1"
 source = { registry = "https://pypi.org/simple" }
@@ -3458,6 +3513,7 @@ dependencies = [
     { name = "accelerate" },
     { name = "chromadb" },
     { name = "easyocr" },
+    { name = "fastapi" },
     { name = "faster-whisper" },
     { name = "ipykernel" },
     { name = "langchain" },
@@ -3468,10 +3524,12 @@ dependencies = [
     { name = "openai-whisper" },
     { name = "opencv-python" },
     { name = "pillow" },
+    { name = "pydantic" },
     { name = "python-dotenv" },
     { name = "scenedetect" },
     { name = "scikit-image" },
     { name = "sentence-transformers" },
+    { name = "supermemory" },
     { name = "torch" },
     { name = "torchaudio" },
     { name = "torchvision" },
@@ -3484,6 +3542,7 @@ requires-dist = [
     { name = "accelerate", specifier = ">=1.12.0" },
     { name = "chromadb", specifier = ">=1.4.1" },
     { name = "easyocr", specifier = ">=1.7.2" },
+    { name = "fastapi", specifier = ">=0.128.7" },
     { name = "faster-whisper", specifier = ">=1.2.1" },
     { name = "ipykernel", specifier = ">=7.2.0" },
     { name = "langchain", specifier = ">=1.2.9" },
@@ -3494,10 +3553,12 @@ requires-dist = [
     { name = "openai-whisper", specifier = ">=20250625" },
     { name = "opencv-python", specifier = ">=4.13.0.92" },
     { name = "pillow", specifier = ">=12.1.0" },
+    { name = "pydantic", specifier = ">=2.12.5" },
     { name = "python-dotenv", specifier = ">=1.2.1" },
     { name = "scenedetect", specifier = ">=0.6.7.1" },
     { name = "scikit-image", specifier = ">=0.26.0" },
     { name = "sentence-transformers", specifier = ">=5.2.2" },
+    { name = "supermemory", specifier = ">=3.24.0" },
     { name = "torch", index = "https://download.pytorch.org/whl/cu121" },
     { name = "torchaudio", index = "https://download.pytorch.org/whl/cu121" },
     { name = "torchvision", index = "https://download.pytorch.org/whl/cu121" },
