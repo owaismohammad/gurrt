@@ -35,37 +35,44 @@ async def query_llm(query:str) -> str:
     
     client_memory.add(
         content = context_caption,
-        container_tags = ["Video-Rag"],
+        container_tags = ["Frame_Captions"],
         metadata = {
             "note_id": "Retrieved Frames"
         }
     )
     client_memory.add(
-        content = context_caption,
-        container_tags = ["Video-Rag"],
+        content = asr_text,
+        container_tags = ["Audio_Captions"],
         metadata = {
             "note_id": "Retrieved Audio"
         }
     )
-    context = client_memory.search.documents(
+    context_frame = client_memory.search.documents(
         q= query,
-        container_tags = ["Video-Rag"],
+        container_tags = ["Frame_Captions"],
+        limit = 10
+    )
+    context_audio = client_memory.search.documents(
+        q= query,
+        container_tags = ["Audio_Captions"],
         limit = 10
     )
     parser = StrOutputParser()
     prompt = PromptTemplate(
         template = LLM_QUERY_PROMPT,
-        input_variables = ["context","query"]
+        input_variables = ["context_frame", "context_audio","query"]
     )
     chain = prompt | llm | parser
     result = chain.invoke({
-        "context": context,
+        "context_frame": context_frame,
+        "context_audio": context_audio,
         "query" : query
     })
     return result
 
 def delete():
-    client_memory.documents.delete_bulk(container_tags=["Video-Rag"])
+    client_memory.documents.delete_bulk(container_tags=["Frame_Captions"])
+    client_memory.documents.delete_bulk(container_tags=["Audio_Captions"])
 
 # result = query_llm("tell me what exactly is the video talking about in 10 points az")
 # print(result)

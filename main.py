@@ -25,6 +25,7 @@ async def save_models() -> JSONResponse:
                 "error": e.stderr
             }
         )
+
 @app.get('/create_vectordb')
 async def vectordb_creation() -> JSONResponse:
     try:
@@ -44,6 +45,7 @@ async def vectordb_creation() -> JSONResponse:
     return JSONResponse(status_code=status.HTTP_200_OK, 
                             content={"message": "Resource Saved Successfully!",
                                      "frame_output": vector_db_creation.stdout})
+
 @app.get('/upload_video')
 async def video_save_caption_emb(video: Annotated[str, Field(description= "Recieve Video Path")]) -> JSONResponse:
     try:
@@ -85,7 +87,6 @@ async def video_save_caption_emb(video: Annotated[str, Field(description= "Recie
 async def chat(query: str) -> str:
     answer = await query_llm(query= query)
     return answer
-
 
 @app.get("/delete_chat")
 async def delete_chat() -> JSONResponse:
