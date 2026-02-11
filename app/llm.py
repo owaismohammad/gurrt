@@ -27,36 +27,36 @@ client_memory = Supermemory(
     api_key=SUPERMEMORY_API_KEY,
 )
 
-async def query_llm(query:str) -> str:
+def query_llm(query:str) -> str:
     caption_list, asr_list = query_collection(query= query , n_results= 10)
 
     context_caption = "\n".join(caption_list)
     asr_text = "\n".join(asr_list)
     
-    client_memory.add(
-        content = context_caption,
-        container_tags = ["Frame_Captions"],
-        metadata = {
-            "note_id": "Retrieved Frames"
-        }
-    )
-    client_memory.add(
-        content = asr_text,
-        container_tags = ["Audio_Captions"],
-        metadata = {
-            "note_id": "Retrieved Audio"
-        }
-    )
-    context_frame = client_memory.search.documents(
-        q= query,
-        container_tags = ["Frame_Captions"],
-        limit = 10
-    )
-    context_audio = client_memory.search.documents(
-        q= query,
-        container_tags = ["Audio_Captions"],
-        limit = 10
-    )
+    # client_memory.add(
+    #     content = context_caption,
+    #     container_tags = ["Frame_Captions"],
+    #     metadata = {
+    #         "note_id": "Retrieved Frames"
+    #     }
+    # )
+    # client_memory.add(
+    #     content = asr_text,
+    #     container_tags = ["Audio_Captions"],
+    #     metadata = {
+    #         "note_id": "Retrieved Audio"
+    #     }
+    # )
+    # context_frame = client_memory.search.documents(
+    #     q= query,
+    #     container_tags = ["Frame_Captions"],
+    #     limit = 10
+    # )
+    # context_audio = client_memory.search.documents(
+    #     q= query,
+    #     container_tags = ["Audio_Captions"],
+    #     limit = 10
+    # )
     parser = StrOutputParser()
     prompt = PromptTemplate(
         template = LLM_QUERY_PROMPT,
@@ -64,8 +64,8 @@ async def query_llm(query:str) -> str:
     )
     chain = prompt | llm | parser
     result = chain.invoke({
-        "context_frame": context_frame,
-        "context_audio": context_audio,
+        "context_frame": context_caption,
+        "context_audio": asr_text,
         "query" : query
     })
     return result
@@ -74,7 +74,7 @@ def delete():
     client_memory.documents.delete_bulk(container_tags=["Frame_Captions"])
     client_memory.documents.delete_bulk(container_tags=["Audio_Captions"])
 
-# result = query_llm("tell me what exactly is the video talking about in 10 points az")
-# print(result)
+result = query_llm("when the person write A=lw , what doeas the term A ,land w means and how it is relevant with the current understanding of the integral being talked about in the video")
+print(result)
 # delete()
 
