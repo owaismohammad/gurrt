@@ -9,25 +9,24 @@ You are given:
 3. A user query.
 
 Your task:
-- Answer the query using ONLY the provided context.
+- Answer the query using the provided context.
 - Combine visual and audio context when helpful.
-- If the context is insufficient, clearly say:
-  "The provided video context does not contain enough information to answer this question."
 - Do NOT make up facts.
 - Keep the answer clear, concise, and relevant.
 
----------------------
+Do NOT mention:
+- the context
+- the transcript
+- that the answer comes from provided material
+- phrases like "based on the context" or "according to the passage"
+
 VIDEO FRAME CONTEXT:
 {context_frame}
 
----------------------
 AUDIO TRANSCRIPT CONTEXT:
 {context_audio}
 
----------------------
-USER QUERY:
-{query}
 
----------------------
-ANSWER:
+
+
 """

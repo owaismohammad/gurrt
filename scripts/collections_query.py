@@ -44,7 +44,7 @@ def query_collection(query: str, n_results: int = 10):
 )   
     results_reranked_audio = rerank_docs(query, results_audio, MODEL_CACHE_DIR, n_results)
     captions_list = caption_frame_collection(results_reranked)
-    print(results_audio["documents"])
+    #print(results_audio["documents"])
     
     
     asr_list = results_reranked_audio["documents"][0]

@@ -145,26 +145,29 @@ def caption_frame_collection(results_reranked: Dict[str, Any]) -> list:
                 
     return caption_list
 
-# def generate_caption(frame,buffer):
-#     frame.save(buffer, format="JPEG")
-#     img_bytes = buffer.getvalue()
-#     response = chat(
-#     model='gemma3',
-#     messages=[
-#         {
-#     "role": "system",
-#     "content": "You are a helpful assistant that can analyze images and provide captions."
-#     },
+def generate_caption(frame,buffer):
+    frame.save(buffer, format="JPEG")
+    img_bytes = buffer.getvalue()
+    response = chat(
+    model='gemma3',
+    messages=[
+        {
+    "role": "system",
+    "content": '''You are a visual reasoning assistant.
+When given an image, first describe the important objects,
+then reason step by step.
+Do not hallucinate details that are not visible.'''
+    },
 
-#     {
-#         'role': 'user',
-#         'content': 'What is in this image? .',
-#         'images': [img_bytes],
-#     }
-#     ],
-#     )
+    {
+        'role': 'user',
+        'content': 'What is in this image? .',
+        'images': [img_bytes],
+    }
+    ],
+    )
 
-#     return response.message.content
+    return response.message.content
 
 
 
