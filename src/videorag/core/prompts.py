@@ -1,16 +1,33 @@
 BLIP_CUSTOM_PROMPT = "A detailed description of what is going on in this picture: "
 
-LLM_QUERY_PROMPT = """ YOU ARE CURRENTLY ANSWERING A USERS QUERY BASED ON A VIDEO \n
-below are is the relevant context that has been derived from the video that has been similiar to the prompt use this as reference \n
-\n
-\n
+LLM_QUERY_PROMPT = """
+You are an AI assistant answering questions based on a video.
+
+You are given:
+1. Context extracted from video frames (visual information).
+2. Context extracted from audio transcripts (spoken information).
+3. A user query.
+
+Your task:
+- Answer the query using ONLY the provided context.
+- Combine visual and audio context when helpful.
+- If the context is insufficient, clearly say:
+  "The provided video context does not contain enough information to answer this question."
+- Do NOT make up facts.
+- Keep the answer clear, concise, and relevant.
+
+---------------------
+VIDEO FRAME CONTEXT:
 {context_frame}
-\n
-\n
-BELOW IS THE RELEVANT CONTEXT DERIVED FROM THE AUDIO TRANSCRIPTS
+
+---------------------
+AUDIO TRANSCRIPT CONTEXT:
 {context_audio}
-\n
-\n
-THE QUERY ASKED BY THE USER IS GIVEN BELOW:
+
+---------------------
+USER QUERY:
 {query}
+
+---------------------
+ANSWER:
 """

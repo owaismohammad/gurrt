@@ -9,7 +9,7 @@ class QueryDecouplingResponse(BaseModel):
 
 
 response = chat(
-  model='llama3.2',
+  model='gemma3',
   messages=[{'role': 'system', 'content': '''decouple the user input P into 
               3 request : (i) Rasr: Requests about automatic speech recognition, to extractaudio information from the video that may pertain to the query.
               (ii) Rdet: Requests for identifyingphysical entities within the video that may assist in answering the query. 
@@ -26,3 +26,4 @@ response = chat(
   format=QueryDecouplingResponse.model_json_schema(),
 )
 decoupled_query_response = QueryDecouplingResponse.model_validate_json(response.message.content)
+print(decoupled_query_response)

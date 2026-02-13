@@ -1,14 +1,5 @@
-# import sys
-# import os
-# sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-# from transformers import CLIPProcessor, CLIPModel, BlipProcessor, BlipForConditionalGeneration
-# from videorag.core.vectordb import frame_embedding_collection
 from pathlib import Path
 from videorag.utils.utils import scene_split, frame_listing, batched_captioning
-# from dotenv import load_dotenv
-
-# load_dotenv()
 
 
 def scene_detection_frame_sampling(
@@ -38,25 +29,3 @@ def scene_detection_frame_sampling(
     return embeddings_list, metadatas, ids
 
 
-# if "__name__" == "__main__":
-#     INPUT_VIDEO = os.getenv(key = 'INPUT_VIDEO')
-#     MODEL_CACHE_DIR = os.getenv(key = 'MODEL_CACHE_DIR')
-
-#     if INPUT_VIDEO is None:
-#         raise RuntimeError("INPUT_VIDEO path is not set")
-#     elif MODEL_CACHE_DIR is None:
-#         raise RuntimeError("CLIP_CACHE path is not set")
-
-#     clip_path = os.path.join(MODEL_CACHE_DIR, "clip_model")
-#     clip_model = CLIPModel.from_pretrained(clip_path, local_files_only= True).to(device)
-#     clip_processor = CLIPProcessor.from_pretrained(clip_path, local_files_only=True)
-
-#     blip_path = os.path.join(MODEL_CACHE_DIR, "blip_model")
-#     blip_processor = BlipProcessor.from_pretrained(blip_path, local_files_only=True)
-#     blip_model = BlipForConditionalGeneration.from_pretrained(blip_path, local_files_only=True).to(device)
-#     embeddings, metadatas, ids = scene_detection_frame_sampling(INPUT_VIDEO, clip_model, clip_processor, blip_processor, blip_model)
-#     frame_embedding_collection.add(
-#         ids = ids,
-#         embeddings= embeddings,
-#         metadatas= metadatas,
-#     )

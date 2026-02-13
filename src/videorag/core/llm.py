@@ -1,27 +1,9 @@
-# import sys
-# import os
-# sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-# from typing import Any, Dict
 from videorag.core.prompts import LLM_QUERY_PROMPT
 
 from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from supermemory import Supermemory
-# from dotenv import load_dotenv
-# load_dotenv()
-
-# GROQ_API_KEY = os.getenv('GROQ_API_KEY')
-# LLM_MODEL = os.getenv('LLM_MODEL')
-
-# SUPERMEMORY_API_KEY = os.getenv("SUPERMEMORY_API_KEY")
-# if GROQ_API_KEY is None:
-#     raise RuntimeError("GROQ_API_KEY not found")
-# elif SUPERMEMORY_API_KEY is None:
-#     raise RuntimeError("SUPERMEMORY_API_KEY not found")
-# elif LLM_MODEL is None:
-#     raise RuntimeError("LLM_MODEL not found")
 
 class LLMService:
     def __init__(self, settings):
@@ -82,8 +64,3 @@ class LLMService:
         audio_deleted = self.client_memory.documents.delete_bulk(container_tags=["Audio_Captions"])
         return {"frames_deleted": frames_deleted,
                 "audio_deleted": audio_deleted}
-
-# result = query_llm("tell me what exactly is the video talking about in 10 points az")
-# print(result)
-# delete()
-

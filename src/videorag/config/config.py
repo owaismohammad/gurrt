@@ -4,7 +4,6 @@ import json
 
 class Settings:
     def __init__(self):
-        
         home = Path(user_config_dir("videorag"))
         home.mkdir(exist_ok=True, parents= True)
         
@@ -27,7 +26,3 @@ class Settings:
         self.MODEL_CACHE_DIR = home / "models"
         self.CHROMA_DB_PATH= home / "chroma_db"
         self.AUDIO_PATH = home / "output.mp3"
-        # self.MODEL_CACHE_DIR = home / "models"
-        # self.MODEL_CACHE_DIR = home / "chroma_db"
-        
-# w = Settings()

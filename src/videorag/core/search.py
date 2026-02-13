@@ -1,25 +1,7 @@
-# import sys
-# import os
-# sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-# from dotenv import load_dotenv
-# from transformers import CLIPProcessor, CLIPModel
 from videorag.config.config import Settings
 from videorag.utils.utils import device, rerank, rerank_docs, caption_frame_collection
 from videorag.core.vectordb import VectorDB
 import torch
-# load_dotenv()
-
-# MODEL_CACHE_DIR = os.getenv("MODEL_CACHE_DIR")
-
-
-# if MODEL_CACHE_DIR is None:
-#     raise RuntimeError("MODEL_CACHE_DIR path not found")
-
-# clip_path = os.path.join(MODEL_CACHE_DIR, "clip_model")
-# model = CLIPModel.from_pretrained(clip_path, local_files_only=True).to(device)
-# processor = CLIPProcessor.from_pretrained(clip_path, local_files_only=True)
-
 
 class SearchService:
     def __init__(self, clip_model, clip_processor, cache_dir: str):

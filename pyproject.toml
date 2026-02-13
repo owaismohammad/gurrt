@@ -24,6 +24,7 @@ dependencies = [
     "scikit-image>=0.26.0",
     "ipykernel>=7.2.0",
     "easyocr>=1.7.2",
+    "yt-dlp>=2026.2.4",
     "openai-whisper>=20250625",
     "faster-whisper>=1.2.1",
     "langchain-text-splitters>=1.1.0",
