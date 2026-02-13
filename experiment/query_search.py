@@ -4,7 +4,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from transformers import CLIPProcessor, CLIPModel
-from app.vector_db import frame_embedding_collection
+from src.vectordb import frame_embedding_collection
 from utils.utils import device
 import torch
 from dotenv import load_dotenv
