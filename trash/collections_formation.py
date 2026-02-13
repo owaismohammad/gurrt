@@ -6,9 +6,9 @@ from utils.utils import device
 from time import time
 from faster_whisper import WhisperModel
 from transformers import CLIPProcessor, CLIPModel, BlipProcessor, BlipForConditionalGeneration
-from app.vector_db import frame_embedding_collection, asr_collection
-from scripts.video_embedding_pipeline import scene_detection_frame_sampling
-from scripts.asr_pipeline import audio_extract_chunk_and_embed
+from src.vectordb import frame_embedding_collection, asr_collection
+from src.embedding import scene_detection_frame_sampling
+from src.asr import audio_extract_chunk_and_embed
 from dotenv import load_dotenv
 load_dotenv()
 
