@@ -1,11 +1,4 @@
-<<<<<<< HEAD:src/videorag/utils/utils.py
 from pathlib import Path
-=======
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import yt_dlp
->>>>>>> 4737d12f55a08540b35752c00a836be69b67a5e2:utils/utils.py
 from typing import Dict, Any
 from ollama import chat
 import moviepy.editor as mp
