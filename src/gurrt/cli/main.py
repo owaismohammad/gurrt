@@ -89,8 +89,13 @@ def init():
             "OLLAMA_API_KEY": ollama
         }, f, indent= 2)
         
-    console.print("[success]✔ Configuration saved successfully![/success]")
-    
+    console.print(
+        Panel(
+        "[success]✔ Configuration saved successfully![/success]"
+        f"[success]saved at {config_file} [/success]",
+        border_style= "green"
+        ))
+        
     
 @app.command()
 def models_download():
@@ -132,8 +137,32 @@ def index(video_path):
             border_style="green"
         )
     )
-    rag = VideoRag()
+    rag = VideoRag(reset=True)
     rag.index_video(video_path=video_path)
+    
+    with console.status("[info]Processing audio transcription...[/info]", spinner="dots"):
+        rag.index_audio(video_path=video_path)
+    
+    console.print(Panel(
+            "[success]✔ Video indexed successfully![/success]"
+            "[success]You may start asking your queries![/success]",
+            border_style="green"
+        ))
+
+@app.command()
+def index_ollama(video_path, model_name):
+    """
+    Index a video by extracting frames and audio for retrieval with Ollama Models.
+    Plug in your Ollama Model Name
+    """
+    console.print(
+        Panel(
+            f"[primary]Indexing Video With Ollama[/primary]\n[info]{video_path}[/info]",
+            border_style="green"
+        )
+    )
+    rag = VideoRag(reset=True)
+    rag.index_video_ollama(video_path=video_path, model_name= model_name)
     
     with console.status("[info]Processing audio transcription...[/info]", spinner="dots"):
         rag.index_audio(video_path=video_path)
@@ -150,7 +179,6 @@ def ask(query:str):
     Ask a question about an indexed video.
     """
     rag = VideoRag()
-    
     
     with console.status("[info]Thinking...[/info]", spinner="dots"):
         response = asyncio.run(rag.ask(query= query))

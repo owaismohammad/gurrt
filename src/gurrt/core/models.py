@@ -8,7 +8,7 @@ from gurrt.config.config import Settings
 class ModelManager:
     def __init__(self, settings: Settings):
         
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.device = "cuda" if torch.cuda.is_available() and torch.cuda.mem_get_info(0)[1]>= 4* 10**9 else "cpu"
         
         self.settings = settings
         self.cache = self.settings.MODEL_CACHE_DIR

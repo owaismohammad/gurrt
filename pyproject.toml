@@ -1,9 +1,14 @@
 [project]
 name = "gurrt"
 version = "0.1.0"
-description = "Add your description here"
+description = "An Intelligent Open-Source Video Understanding System A different path from traditional Large Video Language Models (LVLMs). Built for modularity, openness, and real-world usability."
+authors = [
+    {name="Mohammad Owais", email = "owaismohammad2515@gmail.com"},
+    {name= "Fareha Aslam", email = "farehaaslam57@gmail.com"}
+]
 readme = "README.md"
 requires-python = ">=3.12"
+license = {text = "MIT"}
 dependencies = [
     "torch",
     "torchvision",
@@ -55,6 +60,12 @@ torchaudio = { index = "pytorch-cu121" }
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[dependency-groups]
+dev = [
+    "build>=1.4.0",
+    "twine>=6.2.0",
+]
+
 [project.scripts]
-gurrt = "videorag.cli.main:app"
+gurrt = "gurrt.cli.main:app"
 
