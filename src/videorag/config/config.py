@@ -4,7 +4,7 @@ import json
 
 class Settings:
     def __init__(self):
-        home = Path(user_config_dir("videorag"))
+        home = Path(user_config_dir("gurrt"))
         home.mkdir(exist_ok=True, parents= True)
         
         config_file = home / "config.json"

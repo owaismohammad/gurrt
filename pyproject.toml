@@ -1,5 +1,5 @@
 [project]
-name = "video-rag"
+name = "gurrt"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -33,6 +33,7 @@ dependencies = [
     "supermemory>=3.24.0",
     "platformdirs>=4.5.1",
     "typer>=0.21.1",
+    "alive-progress>=3.3.0",
 ]   
 
 [build-system]
@@ -55,5 +56,5 @@ torchaudio = { index = "pytorch-cu121" }
 where = ["src"]
 
 [project.scripts]
-video-rag = "videorag.cli.main:app"
+gurrt = "videorag.cli.main:app"
 
