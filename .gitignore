@@ -9,14 +9,7 @@ wheels/
 # Virtual environments
 .venv
 .env
-outputs
 tempCodeRunnerFile.py
-chroma_db_data
-model_cache
-db_path
-experiment
-trash
-chromadb
-data 
-experiment
-trash
+data/
+experiment/
+trash/
