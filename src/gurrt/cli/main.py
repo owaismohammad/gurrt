@@ -11,7 +11,7 @@ from pathlib import Path
 from platformdirs import user_config_dir
 import json
 import asyncio
-from videorag.core.pipeline import VideoRag
+from gurrt.core.pipeline import VideoRag
 
 from rich.theme import Theme
 from rich.console import Console
@@ -106,7 +106,7 @@ def models_download():
             border_style="green"
         )
     )
-    from videorag.core.models import download_models
+    from gurrt.core.models import download_models
     with Progress(
         SpinnerColumn(style="green"),
         TextColumn("[progress.description]{task.description}"),

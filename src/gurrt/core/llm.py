@@ -1,4 +1,4 @@
-from videorag.core.prompts import LLM_QUERY_PROMPT
+from gurrt.core.prompts import LLM_QUERY_PROMPT
 
 from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate

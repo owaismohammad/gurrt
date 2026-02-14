@@ -1,7 +1,7 @@
 from typing import Annotated
 from fastapi import FastAPI, status
 from fastapi.responses import JSONResponse
-from videorag.core.llm import query_llm, delete
+from gurrt.core.llm import query_llm, delete
 from pydantic import Field
 import subprocess
 

@@ -11,7 +11,7 @@ from scenedetect import open_video, SceneManager
 from scenedetect.detectors import ContentDetector
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from videorag.config.config import Settings
+from gurrt.config.config import Settings
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 

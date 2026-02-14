@@ -1,11 +1,11 @@
 from pathlib import Path
-from videorag.config.config import Settings
-from videorag.core.asr import audio_extract_chunk_and_embed
-from videorag.core.embedding import scene_detection_frame_sampling
-from videorag.core.llm import LLMService
-from videorag.core.models import ModelManager
-from videorag.core.search import SearchService
-from videorag.core.vectordb import VectorDB
+from gurrt.config.config import Settings
+from gurrt.core.asr import audio_extract_chunk_and_embed
+from gurrt.core.embedding import scene_detection_frame_sampling
+from gurrt.core.llm import LLMService
+from gurrt.core.models import ModelManager
+from gurrt.core.search import SearchService
+from gurrt.core.vectordb import VectorDB
 
 class VideoRag:
     def __init__(self):

@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 import torch
-from videorag.utils.utils import audio_extraction, audio_to_text, chunk_text, device
+from gurrt.utils.utils import audio_extraction, audio_to_text, chunk_text, device
 
 def audio_extract_chunk_and_embed(
                                 video_path: Path, 
