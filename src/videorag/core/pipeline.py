@@ -7,19 +7,18 @@ from videorag.core.models import ModelManager
 from videorag.core.search import SearchService
 from videorag.core.vectordb import VectorDB
 
-
 class VideoRag:
     def __init__(self):
         
         self.settings = Settings()
-        self.models = ModelManager(self.settings.MODEL_CACHE_DIR)
+        self.models = ModelManager(self.settings)
         self.vectordb = VectorDB(str(self.settings.CHROMA_DB_PATH))
-        self.llm = LLMService(Settings())
+        self.llm = LLMService(self.settings)
         
         self.clip_model, self.clip_processor= self.models.get_clip()
         self.search = SearchService(clip_model=self.clip_model,
                                     clip_processor=self.clip_processor,
-                                    cache_dir=str(self.settings.MODEL_CACHE_DIR))
+                                    settings= self.settings)
         
     def index_video(self, video_path:Path):
         
@@ -48,7 +47,6 @@ class VideoRag:
         self.models.release_whisper()
         
     async def ask(self, query:str):
-        print("Searching Captions")
         caption_list, asr_list = self.search.query_collection(query,
                                                               n_results=10)
         result = await self.llm.query_llm(query, 

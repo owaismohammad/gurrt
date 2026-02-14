@@ -2,15 +2,16 @@ import torch
 from transformers import  CLIPProcessor, CLIPModel, BlipProcessor, BlipForConditionalGeneration
 from sentence_transformers import CrossEncoder
 from faster_whisper import WhisperModel
-from pathlib import Path
 
 from videorag.config.config import Settings
 
 class ModelManager:
-    def __init__(self, cache_dir:Path):
-        self.cache = cache_dir
+    def __init__(self, settings: Settings):
+        
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.settings = Settings()
+        
+        self.settings = settings
+        self.cache = self.settings.MODEL_CACHE_DIR
         
         self._clip = None
         self._clip_processor = None
@@ -84,17 +85,17 @@ class ModelManager:
         self._free_gpu()
         
 def download_models(cache_dir):
-    print("Downloading CLIP Models....")
+    print("Downloading CLIP....")
     clip = CLIPModel.from_pretrained("openai/clip-vit-base-patch32", use_safetensors = True)
     proc = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
     clip.save_pretrained(cache_dir / "clip_model")
     proc.save_pretrained(cache_dir / "clip_model")
 
-    print("Downloading BLIP Models....")
+    print("Downloading BLIP....")
     blip = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base", use_safetensors= True)
     blip_proc = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
     blip.save_pretrained(cache_dir / "blip_model")
     blip_proc.save_pretrained(cache_dir / "blip_model")
-
+    print("Downloading Reranker....")
     reranker = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
     reranker.save(str(cache_dir / "reranker_model"))

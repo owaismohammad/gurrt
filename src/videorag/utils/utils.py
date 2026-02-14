@@ -12,12 +12,6 @@ from scenedetect.detectors import ContentDetector
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from videorag.config.config import Settings
-# from dotenv import load_dotenv
-# load_dotenv()
-
-# MODEL_DIR = os.getenv("MODEL_CACHE_DIR")
-# if MODEL_DIR is None:
-#     raise RuntimeError("MODEL_CACHE_DIR is not set")
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -107,7 +101,7 @@ def frame_listing(scene_list, video_path: Path):
     frame_PIL = []
     timestamps_list = []
     
-    with tqdm(total = len(scene_list), desc="processing frames ") as pbar: 
+    with tqdm(total = len(scene_list), desc="\033[1;32mProcessing frames...\033[0m") as pbar: 
         for i, scene in enumerate(scene_list):
             start_time, end_time = scene[0].get_seconds(), scene[1].get_seconds()
             mid_time = (start_time + end_time) / 2
@@ -132,7 +126,8 @@ def batched_captioning(frame_list: list, batch_size: int, clip_model, clip_proce
     caption_list = []
     embedding_list = []
     
-    with tqdm(total = int(len(frame_list)/ batch_size), desc = "Batched image captioning") as pbar:
+    with tqdm(total = int(len(frame_list)/ batch_size),
+              desc = "\033[1;32mAnalyzing video visuals...\033[0m") as pbar:
         for i in range(0, len(frame_list),batch_size):
             batch = frame_list[i:i+batch_size]
             caption , embedding = generate_captions_in_batches(batch, 
@@ -219,7 +214,7 @@ def rerank(query: str, results, MODEL_DIR:str, top_k: int = 10) -> Dict[str, Any
         'distances': [final_dists]
     }
     
-def rerank_docs(query: str, results, MODEL_DIR, top_k: int = 10) -> Dict[str, Any]:
+def rerank_docs(query: str, results, MODEL_DIR: str, top_k: int = 10) -> Dict[str, Any]:
     """
     Performs 'Rank CoT' retrieval:
     1. Takes initial results from ChromaDB.
