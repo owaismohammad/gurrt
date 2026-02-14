@@ -1,5 +1,5 @@
 from pathlib import Path
-from videorag.utils.utils import scene_split, frame_listing, batched_captioning
+from gurrt.utils.utils import scene_split, frame_listing, batched_captioning
 
 
 def scene_detection_frame_sampling(

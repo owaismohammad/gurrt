@@ -3,7 +3,7 @@ from transformers import  CLIPProcessor, CLIPModel, BlipProcessor, BlipForCondit
 from sentence_transformers import CrossEncoder
 from faster_whisper import WhisperModel
 
-from videorag.config.config import Settings
+from gurrt.config.config import Settings
 
 class ModelManager:
     def __init__(self, settings: Settings):

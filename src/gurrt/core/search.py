@@ -1,6 +1,6 @@
-from videorag.config.config import Settings
-from videorag.utils.utils import device, rerank, rerank_docs, caption_frame_collection
-from videorag.core.vectordb import VectorDB
+from gurrt.config.config import Settings
+from gurrt.utils.utils import device, rerank, rerank_docs, caption_frame_collection
+from gurrt.core.vectordb import VectorDB
 import torch
 
 class SearchService:
