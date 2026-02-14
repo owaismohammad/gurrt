@@ -1,8 +1,5 @@
 # gurrt
 ### An intelligent video understanding system designed as an open-source alternative to monolithic Large Video Language Models
-
-## ❓ Why Gurrt?
-
 I built gurrt out of frustration.
 
 Working with Large Video Language Models locally is:
@@ -83,6 +80,7 @@ uv sync
 
 ## File Structure
 
+```bash
 gurrt/
 ├── src/
 │   |
@@ -113,4 +111,5 @@ gurrt/
 │           └── utils.py            # Shared utility functions and helpers
 │
 └── README.md                         # Project documentation
+```
 
