@@ -26,27 +26,26 @@ Then it stops feeling truly open.
 
 ### A Different Philosophy
 
-gurrt is not an attempt to compete with systems like YouTube’s internal models or large-scale industrial LVLMs trained on massive GPU clusters.
+gurrt is not an attempt to compete with systems like YouTube’s internal models or other large-scale industrial LVLMs trained on massive GPU clusters.
 
 It is an attempt to rethink the approach.
 
-Instead of asking:
+Instead of asking how to build a larger end-to-end video transformer, it explores a different path:
 
-> "How can we train a bigger model?"
+- Smarter frame sampling techniques  
+- Stronger and more modular vision models  
+- Better structured embedding strategies  
+- More efficient and grounded RAG pipelines  
+- Persistent memory-driven reasoning  
 
-gurrt asks:
+It represents a belief that meaningful video understanding can emerge from:
 
-> "How can we design a smarter system?"
-
----
-
-gurrt relies on:
-
-- Modular components
-- Retrieval-augmented reasoning  
-- Semantic memory  
+- Thoughtful engineering  
 - Smart sampling  
-- Persistent conversational context  
+- Strong modular components  
+- Memory-augmented retrieval  
+
+Not just from massive GPU clusters and billion-parameter models.
 
 
 ## Architecture Overview
@@ -113,5 +112,6 @@ gurrt/
 │
 └── README.md                         # Project documentation
 ```
+
 
 
