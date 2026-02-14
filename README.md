@@ -1,5 +1,6 @@
 # gurrt
-### An intelligent video understanding system designed as an open-source alternative to monolithic Large Video Language Models
+An intelligent video understanding system designed as an open-source alternative to monolithic Large Video Language Models
+
 I built gurrt out of frustration.
 
 Working with Large Video Language Models locally is:
@@ -112,4 +113,5 @@ gurrt/
 │
 └── README.md                         # Project documentation
 ```
+
 
