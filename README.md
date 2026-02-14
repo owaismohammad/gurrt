@@ -1,9 +1,9 @@
-# gurrt
-An intelligent video understanding system designed as an open-source alternative to monolithic Large Video Language Models
+# gurrt: An intelligent video understanding system 
 
+## An open-source alternative to monolithic Large Video Language Models
 I built gurrt out of frustration.
 
-Working with Large Video Language Models locally is:
+One cannot work with Large Video Language Models :
 
 - Expensive to set up  
 - GPU intensive  
@@ -27,9 +27,7 @@ Then it stops feeling truly open.
 ### A Different Philosophy
 
 gurrt is not an attempt to compete with systems like YouTube’s internal models or other large-scale industrial LVLMs trained on massive GPU clusters.
-
 It is an attempt to rethink the approach.
-
 Instead of asking how to build a larger end-to-end video transformer, it explores a different path:
 
 - Smarter frame sampling techniques  
@@ -37,6 +35,8 @@ Instead of asking how to build a larger end-to-end video transformer, it explore
 - Better structured embedding strategies  
 - More efficient and grounded RAG pipelines  
 - Persistent memory-driven reasoning  
+
+The idea is how can i just get the job done with minimal efforts yielding high end results
 
 It represents a belief that meaningful video understanding can emerge from:
 
@@ -48,7 +48,7 @@ It represents a belief that meaningful video understanding can emerge from:
 Not just from massive GPU clusters and billion-parameter models.
 
 
-## Architecture Overview
+### Architecture Overview
 ```bash
 Video
   │
@@ -65,7 +65,7 @@ Video
   └── LLM Reasoning Engine
 ```
 
-## Project Setup (using uv)
+### Project Setup (using uv)
 
 ```bash
 # Install uv if you haven't already
@@ -78,7 +78,7 @@ uv sync
 .venv\Scripts\activate
 ```
 
-## File Structure
+### File Structure
 
 ```bash
 gurrt/
@@ -112,6 +112,7 @@ gurrt/
 │
 └── README.md                         # Project documentation
 ```
+
 
 
 
