@@ -1,6 +1,6 @@
 # gurrt: An intelligent video understanding system 
 <p align="center">
-  <img src="https://github.com/owaismohammad/gurrt/blob/main/gurrt.png" alt="Alt text for your image">
+  <img src="gurrt.png" alt="Alt text for your image">
 </p>
 
 An open-source alternative to monolithic Large Video Language Models built out of frustration.
@@ -154,6 +154,7 @@ gurrt/
 │
 └── README.md                         # Project documentation
 ```
+
 
 
 
