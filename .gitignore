@@ -13,3 +13,5 @@ tempCodeRunnerFile.py
 data/
 experiment/
 trash/
+uv.lock
+.python-version

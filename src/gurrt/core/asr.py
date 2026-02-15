@@ -2,13 +2,14 @@ import os
 from pathlib import Path
 
 import torch
-from gurrt.utils.utils import audio_extraction, audio_to_text, chunk_text, device
+from gurrt.utils.utils import audio_extraction, audio_to_text, chunk_text
 
 def audio_extract_chunk_and_embed(
                                 video_path: Path, 
                                 clip_model, 
                                 clip_processor, 
-                                whisper_model):
+                                whisper_model,
+                                device):
     audio_file = audio_extraction(path= video_path)
     text = audio_to_text(audio_file, model= whisper_model )
     chunked_text = chunk_text(text=text)

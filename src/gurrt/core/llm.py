@@ -38,12 +38,12 @@ class LLMService:
         context_frame = self.client_memory.search.documents(
             q= query,
             container_tags = ["Frame_Captions"],
-            limit = 7
+            limit = 9
         )
         context_audio = self.client_memory.search.documents(
             q= query,
             container_tags = ["Audio_Captions"],
-            limit = 7
+            limit = 9
         )
         parser = StrOutputParser()
         prompt = PromptTemplate(
@@ -58,7 +58,7 @@ class LLMService:
         })
         return result
 
-    async def delete(self) -> dict:
+    def delete(self) -> dict:
         frames_deleted = self.client_memory.documents.delete_bulk(container_tags=["Frame_Captions"])
         audio_deleted = self.client_memory.documents.delete_bulk(container_tags=["Audio_Captions"])
         return {"frames_deleted": frames_deleted,
