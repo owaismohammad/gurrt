@@ -1,6 +1,6 @@
 [project]
 name = "gurrt"
-version = "0.1.0"
+version = "0.1.1"
 description = "An Intelligent Open-Source Video Understanding System A different path from traditional Large Video Language Models (LVLMs). Built for modularity, openness, and real-world usability."
 authors = [
     {name="Mohammad Owais", email = "owaismohammad2515@gmail.com"},
@@ -14,7 +14,6 @@ dependencies = [
     "torchvision",
     "torchaudio",
     "opencv-python>=4.13.0.92",
-    "python-dotenv>=1.2.1",
     "transformers>=5.1.0",
     "accelerate>=1.12.0",
     "pillow>=12.1.0",
@@ -27,10 +26,6 @@ dependencies = [
     "tqdm>=4.67.3",
     "scenedetect>=0.6.7.1",
     "scikit-image>=0.26.0",
-    "ipykernel>=7.2.0",
-    "easyocr>=1.7.2",
-    "yt-dlp>=2026.2.4",
-    "openai-whisper>=20250625",
     "faster-whisper>=1.2.1",
     "langchain-text-splitters>=1.1.0",
     "fastapi>=0.128.7",
@@ -38,7 +33,7 @@ dependencies = [
     "supermemory>=3.24.0",
     "platformdirs>=4.5.1",
     "typer>=0.21.1",
-    "alive-progress>=3.3.0",
+    "opencv-python-headless>=4.13.0.92",
 ]   
 
 [build-system]

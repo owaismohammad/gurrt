@@ -303,7 +303,7 @@ def uniform_frame_sampling(path: Path, clip_model, clip_processor, blip_processo
     return embeddings, metadatas, ids
 
 def uniform_frame_sampling_ollama(video_path: Path, model_name: str, clip_model, clip_processor):
-    cap= cv2.VideoCapture(path)
+    cap= cv2.VideoCapture(video_path)
     fps = cap.get(cv2.CAP_PROP_FPS)
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     frame_no = 0
@@ -329,7 +329,7 @@ def uniform_frame_sampling_ollama(video_path: Path, model_name: str, clip_model,
                 image_embedding = outputs.pooler_output
                 image_embedding = image_embedding / image_embedding.norm(dim = -1, keepdim= True)
                 image_embedding = image_embedding.squeeze(0).cpu().numpy().tolist()
-                frame_id = f"{path}:{timestamp_sec}"
+                frame_id = f"{video_path}:{timestamp_sec}"
                 
                 ids.append(frame_id)
                 embeddings.append(image_embedding)
@@ -339,7 +339,7 @@ def uniform_frame_sampling_ollama(video_path: Path, model_name: str, clip_model,
                     "caption": caption,
                     "timestamp_ms": timestamp_sec,
                     "fps": fps,
-                    "source_path": path
+                    "source_path": video_path
                 })
                 
             frame_no +=1
