@@ -4,9 +4,8 @@
 
 [![Downloads](https://pepy.tech/badge/gurrt/)](https://pepy.tech/project/gurrt)
 [![Twitter Follow](https://img.shields.io/twitter/follow/muffBozo.svg?style=social)](https://twitter.com/muffBozo)
-<p align="center">
-  <img src="https://github.com/owaismohammad/gurrt/blob/main/gurrt.png" alt="Alt text for your image">
-</p>
+![gurrt](https://raw.githubusercontent.com/owaismohammad/gurrt/main/gurrt.png)
+
 gurrt is an intelligent video understanding system, an open-source alternative to monolithic Large Video Language Models built out of frustration.
 
 One cannot work with Large Video Language Models :
@@ -156,6 +155,7 @@ gurrt/
 │
 └── README.md                         # Project documentation
 ```
+
 
 
 
