@@ -604,7 +604,7 @@ wheels = [
 
 [[package]]
 name = "gurrt"
-version = "0.1.0"
+version = "0.1.5"
 source = { editable = "." }
 dependencies = [
     { name = "accelerate" },
@@ -625,12 +625,16 @@ dependencies = [
     { name = "scikit-image" },
     { name = "sentence-transformers" },
     { name = "supermemory" },
-    { name = "torch" },
-    { name = "torchaudio" },
-    { name = "torchvision" },
     { name = "tqdm" },
     { name = "transformers" },
     { name = "typer" },
+]
+
+[package.optional-dependencies]
+cuda = [
+    { name = "torch" },
+    { name = "torchaudio" },
+    { name = "torchvision" },
 ]
 
 [package.dev-dependencies]
@@ -659,13 +663,14 @@ requires-dist = [
     { name = "scikit-image", specifier = ">=0.26.0" },
     { name = "sentence-transformers", specifier = ">=5.2.2" },
     { name = "supermemory", specifier = ">=3.24.0" },
-    { name = "torch", index = "https://download.pytorch.org/whl/cu121" },
-    { name = "torchaudio", index = "https://download.pytorch.org/whl/cu121" },
-    { name = "torchvision", index = "https://download.pytorch.org/whl/cu121" },
+    { name = "torch", marker = "extra == 'cuda'", index = "https://download.pytorch.org/whl/cu121" },
+    { name = "torchaudio", marker = "extra == 'cuda'", index = "https://download.pytorch.org/whl/cu121" },
+    { name = "torchvision", marker = "extra == 'cuda'", index = "https://download.pytorch.org/whl/cu121" },
     { name = "tqdm", specifier = ">=4.67.3" },
     { name = "transformers", specifier = ">=5.1.0" },
     { name = "typer", specifier = ">=0.21.1" },
 ]
+provides-extras = ["cuda"]
 
 [package.metadata.requires-dev]
 dev = [
