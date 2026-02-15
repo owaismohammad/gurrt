@@ -1,9 +1,5 @@
-[![PyPI version](https://img.shields.io/pypi/v/gurrt)](https://pypi.org/project/gurrt/)
-[![Python Versions](https://img.shields.io/pypi/pyversions/gurrt)](https://pypi.org/project/gurrt/)
-[![License](https://img.shields.io/pypi/l/gurrt)](https://pypi.org/project/gurrt/)
-
-[![Downloads](https://pepy.tech/badge/gurrt/)](https://pepy.tech/project/gurrt)
-[![Twitter Follow](https://img.shields.io/twitter/follow/muffBozo.svg?style=social)](https://twitter.com/muffBozo)
+[![PyPI version](https://img.shields.io/pypi/v/gurrt)](https://pypi.org/project/gurrt/)[![Python Versions](https://img.shields.io/pypi/pyversions/gurrt)](https://pypi.org/project/gurrt/)
+[![License](https://img.shields.io/pypi/l/gurrt)](https://pypi.org/project/gurrt/)[![Downloads](https://pepy.tech/badge/gurrt/)](https://pepy.tech/project/gurrt)[![Twitter Follow](https://img.shields.io/twitter/follow/muffBozo.svg?style=social)](https://twitter.com/muffBozo)
 <p align="center">
   <img src="https://raw.githubusercontent.com/owaismohammad/gurrt/main/gurrt.png" width="450">
 </p>
@@ -158,6 +154,7 @@ gurrt/
 │
 └── README.md                         # Project documentation
 ```
+
 
 
 
