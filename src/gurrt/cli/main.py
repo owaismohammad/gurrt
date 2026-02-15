@@ -48,7 +48,6 @@ def init():
     Initialize VideoRag by saving required API keys.
     """
     groq_link = "https://console.groq.com/docs/models"
-    ollama_link = "https://docs.ollama.com/api/introduction"
     supermemory_link = "https://supermemory.ai/docs/integrations/supermemory-sdk"
     config_file = config_dir / "config.json"
     console.print(
@@ -72,21 +71,11 @@ def init():
     supermemory = Prompt.ask("[primary]Enter Supermemory API Key[/primary]", password=True)
 
     
-    console.print(
-        Panel(
-            "[info]Ollama Setup Guide:\n[/info]"
-            f"[bold green]{ollama_link}[/bold green]",
-            title="Ollama",
-            border_style="green"
-        )
-    )
-    ollama = Prompt.ask("[info]Enter Ollama API Key[/info]", password=True)
     
     with open(config_file, "w") as f:
         json.dump({
             "GROQ_API_KEY": groq,
             "SUPERMEMORY_API_KEY": supermemory,
-            "OLLAMA_API_KEY": ollama
         }, f, indent= 2)
         
     console.print(
