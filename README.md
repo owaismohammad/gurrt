@@ -1,4 +1,5 @@
-[![Supported Python Versions](https://img.shields.io/pypi/pyversions/gurrt)](https://pypi.org/project/gurrt/) [![PyPI version]
+[![Supported Python Versions](https://img.shields.io/pypi/pyversions/gurrt)](https://pypi.org/project/gurrt/) [![PyPI version][![PyPI version](https://badge.fury.io/py/gurrt.png?icon=si%3Apython)](https://badge.fury.io/py/gurrt)
+
 
 ![PyPI version](https://img.shields.io/pypi/v/gurrt)
 ![Python](https://img.shields.io/pypi/pyversions/gurrt)
@@ -156,6 +157,7 @@ gurrt/
 │
 └── README.md                         # Project documentation
 ```
+
 
 
 
