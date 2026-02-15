@@ -1,8 +1,46 @@
 # gurrt: An intelligent video understanding system 
 
-## An open-source alternative to monolithic Large Video Language Models built out of frustration.
+An open-source alternative to monolithic Large Video Language Models built out of frustration.
 
+## 🌿 Quick Start Guide
 
+### 1. Installation
+
+Set up **gurrt** using `uv` for speed and isolation:
+
+```bash
+# 1. Install uv and create environment
+pip install uv
+uv venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+
+# 2. Install gurrt (CPU)
+uv pip install gurrt
+
+# 3. OR Install with GPU Support
+uv pip install gurrt[cuda] --extra-index-url https://download.pytorch.org/whl/cu121
+
+```
+
+---
+
+### 2. Commands
+
+| Command | Description |
+| --- | --- |
+| `gurrt init` | Set up API keys (Groq, Supermemory, Ollama). |
+| `gurrt models-download` | Pre-download and cache AI models locally. |
+| `gurrt index <path>` | Process a video (frames & audio) for searching. |
+| `gurrt index-ollama <path> <model>` | Index using a specific Ollama model. |
+| `gurrt ask "<query>"` | Ask questions about your indexed video. |
+
+---
+
+### 🛠 Environment Details
+
+The tool automatically optimizes performance by disabling unnecessary logging and tokenizer parallelism to ensure a clean CLI experience yet some logs do appear of Moviepy will resolve it in future iterations.
+
+## The Challenge
 One cannot work with Large Video Language Models :
 
 - Expensive to set up  
@@ -112,6 +150,7 @@ gurrt/
 │
 └── README.md                         # Project documentation
 ```
+
 
 
 
