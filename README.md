@@ -1,6 +1,8 @@
-[![Supported Python Versions](https://img.shields.io/pypi/pyversions/gurrt)](https://pypi.org/project/gurrt/) [![PyPI version](https://badge.fury.io/py/gurrt.svg?icon=si%3Apython)](https://badge.fury.io/py/gurrt)
-![PyPI version](https://img.shields.io/pypi/v/gurrt)
-![Python](https://img.shields.io/pypi/pyversions/gurrt)
+[![PyPI version](https://img.shields.io/pypi/v/gurrt)](https://pypi.org/project/gurrt/)
+[![Python Versions](https://img.shields.io/pypi/pyversions/gurrt)](https://pypi.org/project/gurrt/)
+[![License](https://img.shields.io/pypi/l/gurrt)](https://pypi.org/project/gurrt/)
+[![Downloads](https://pepy.tech/badge/gurrt/month)](https://pepy.tech/project/gurrt)
+
 [![Downloads](https://pepy.tech/badge/gurrt/)](https://pepy.tech/project/gurrt)
 [![Twitter Follow](https://img.shields.io/twitter/follow/muffBozo.svg?style=social)](https://twitter.com/muffBozo)
 <p align="center">
@@ -155,6 +157,7 @@ gurrt/
 │
 └── README.md                         # Project documentation
 ```
+
 
 
 
