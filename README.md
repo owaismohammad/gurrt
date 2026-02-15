@@ -1,9 +1,13 @@
-# gurrt: An intelligent video understanding system 
+[![Supported Python Versions](https://img.shields.io/pypi/pyversions/gurrt)](https://pypi.org/project/gurrt/) [![PyPI version]
+
+![PyPI version](https://img.shields.io/pypi/v/gurrt)
+![Python](https://img.shields.io/pypi/pyversions/gurrt)
+[![Downloads](https://pepy.tech/badge/gurrt/)](https://pepy.tech/project/gurrt)
+[![Twitter Follow](https://img.shields.io/twitter/follow/willmcgugan.svg?style=social)](https://twitter.com/muffBozo)
 <p align="center">
   <img src="gurrt.png" alt="Alt text for your image">
 </p>
-
-An open-source alternative to monolithic Large Video Language Models built out of frustration.
+gurrt is an intelligent video understanding system, an open-source alternative to monolithic Large Video Language Models built out of frustration.
 
 ## 🌿 Quick Start Guide
 
@@ -154,6 +158,7 @@ gurrt/
 │
 └── README.md                         # Project documentation
 ```
+
 
 
 
