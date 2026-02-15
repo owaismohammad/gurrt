@@ -397,7 +397,6 @@ def detect_scenes(video_path,
                 caption=generate_caption(buffer=buffer,
                                          frame = image,
                                          model = model)
-                print(caption)
                 inputs = clip_processor(images = image, return_tensors = 'pt').to(device)
                 with torch.no_grad():
                     outputs =clip_model.get_image_features(inputs.pixel_values)
