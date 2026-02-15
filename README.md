@@ -3,52 +3,12 @@
 ![PyPI version](https://img.shields.io/pypi/v/gurrt)
 ![Python](https://img.shields.io/pypi/pyversions/gurrt)
 [![Downloads](https://pepy.tech/badge/gurrt/)](https://pepy.tech/project/gurrt)
-[![Twitter Follow](https://img.shields.io/twitter/follow/willmcgugan.svg?style=social)](https://twitter.com/muffBozo)
+[![Twitter Follow](https://img.shields.io/twitter/follow/muffBozo.svg?style=social)](https://twitter.com/muffBozo)
 <p align="center">
   <img src="gurrt.png" alt="Alt text for your image">
 </p>
 gurrt is an intelligent video understanding system, an open-source alternative to monolithic Large Video Language Models built out of frustration.
 
-## 🌿 Quick Start Guide
-
-### 1. Installation
-
-Set up **gurrt** using `uv`. Note: This project requires **Python 3.12**.
-
-```bash
-# 1. Install uv and set Python version
-pip install uv
-uv venv
-uv python pin 3.12
-
-# 2. Activate environment
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-
-# 3. Install gurrt (Standard/CPU)
-uv pip install gurrt
-
-# 4. OR Install with GPU Support
-uv pip install gurrt[cuda] --extra-index-url https://download.pytorch.org/whl/cu121
-
-```
-
----
-
-### 2. Commands
-
-| Command | Description |
-| --- | --- |
-| `gurrt init` | Configure API keys (Groq, Supermemory, Ollama). |
-| `gurrt models-download` | Download and cache AI models locally. |
-| `gurrt index <path>` | Extract frames and audio for search. |
-| `gurrt index-ollama <path> <model>` | Index using a specific Ollama model. |
-| `gurrt ask "<query>"` | Query your indexed video content. |
-
-The tool automatically optimizes performance by disabling unnecessary logging and tokenizer parallelism to ensure a clean CLI experience yet some logs do appear of Moviepy will resolve it in future iterations.
-
----
-
-### Why gurrt!?
 One cannot work with Large Video Language Models :
 
 - Expensive to set up  
@@ -92,6 +52,44 @@ It represents a belief that meaningful video understanding can emerge from:
 - Memory-augmented retrieval  
 
 Not just from massive GPU clusters and billion-parameter models.
+## 🌿 Quick Start Guide for pypi package
+
+### 1. Installation
+
+Set up **gurrt** using `uv`. Note: This project requires **Python 3.12**.
+
+```bash
+# 1. Install uv and set Python version
+pip install uv
+uv venv
+uv python pin 3.12
+
+# 2. Activate environment
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+
+# 3. Install gurrt (Standard/CPU)
+uv pip install gurrt
+
+# 4. OR Install with GPU Support
+uv pip install gurrt[cuda] --extra-index-url https://download.pytorch.org/whl/cu121
+
+```
+
+---
+
+### 2. Commands
+
+| Command | Description |
+| --- | --- |
+| `gurrt init` | Configure API keys (Groq, Supermemory, Ollama). |
+| `gurrt models-download` | Download and cache AI models locally. |
+| `gurrt index <path>` | Extract frames and audio for search. |
+| `gurrt index-ollama <path> <model>` | Index using a specific Ollama model. |
+| `gurrt ask "<query>"` | Query your indexed video content. |
+
+The tool automatically optimizes performance by disabling unnecessary logging and tokenizer parallelism to ensure a clean CLI experience yet some logs do appear of Moviepy will resolve it in future iterations.
+
+---
 
 
 ### Architecture Overview
@@ -158,6 +156,7 @@ gurrt/
 │
 └── README.md                         # Project documentation
 ```
+
 
 
 
