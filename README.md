@@ -4,52 +4,53 @@
   <img src="https://raw.githubusercontent.com/owaismohammad/gurrt/main/gurrt.png" width="450">
 </p>
 
+**gUrrT** (derived from the **Surveilens** research paper) is an optimized framework designed to bypass the heavy computational requirements of Large Video Language Models (LVLMs). While standard LVLMs often require high-end enterprise GPUs, gUrrT is engineered to deliver high-accuracy video understanding on consumer grade hardware (e.g., 4GB VRAM) by decomposing video into its core sensory components.
 
-gurrt is an intelligent video understanding system, an open-source alternative to monolithic Large Video Language Models built out of frustration.
+**The Philosophy: Pragmatic Decomposition**
+With gUrrT, the goal isn't to reinvent the wheel or solve the complex "temporal dimension" problem that plagues modern AI. Instead, the project explores a critical question: Can we achieve "Video Understanding" simply by treating a video as a searchable collection of moments?
 
-One cannot work with Large Video Language Models :
+By bypassing the temporal modeling used in expensive LVLMs, gUrrT enables you to "talk to a video" by transforming it into a structured, queryable index. It gets the job done without the hefty compute tax.
 
-- Expensive to set up  
-- GPU intensive  
-- Slow to experiment with  
-- Difficult to run on consumer hardware  
-- Often closed or partially restricted  
+The "Temporal Dimension" of video is computationally expensive to process directly. gUrrT shifts the paradigm from **Video Modeling** to **Contextual Retrieval**:
 
-Most state-of-the-art video models require massive compute clusters and large-scale infrastructure.  
-They are impressive — but they are not accessible.
-
-If meaningful video intelligence requires:
-
-- Multiple high-end GPUs  
-- Hours of inference time  
-- Proprietary model access  
-
-Then it stops feeling truly open.
+* **Vision Models (The Eyes):** Describe discrete scenes and frames.
+* **Transcription Models (The Ears):** Process audio via Faster-Whisper.
+* **Advanced Sampling:** Intelligently reduces the frame-load to only what is relevant.
+* **RAG (The Brain):** Compiles these sensory inputs into a vector-based context for a Large Language Model (LLM).
 
 ---
 
-### A Different Philosophy
+### **The Technical Pipeline**
 
-gurrt is not an attempt to compete with systems like YouTube’s internal models or other large-scale industrial LVLMs trained on massive GPU clusters.
-It is an attempt to rethink the approach.
-Instead of asking how to build a larger end-to-end video transformer, it explores a different path:
+1. **Dual-Stage Frame Sampling:** * **Scene Detection:** The primary method, segmenting video into distinct events. For each scene, the pipeline captures the **start, middle, and end frames**.
+* **Uniform Sampling:** Acts as a robust fallback if no distinct scene transitions are detected.
+* *Note: SSIM (Structural Similarity Index) was tested but discarded to prioritize processing speed.*
 
-- Smarter frame sampling techniques  
-- Stronger and more modular vision models  
-- Better structured embedding strategies  
-- More efficient and grounded RAG pipelines  
-- Persistent memory-driven reasoning  
 
-The idea is how can i just get the job done with minimal efforts yielding high end results
+2. **Multimodal Embedding:** * Visuals are embedded using **CLIP**, and captions are generated via **BLIP** (though experimentation shows BLIP’s limitations in context density).
+* Audio is processed via **Faster-Whisper** and stored in a separate vector collection.
 
-It represents a belief that meaningful video understanding can emerge from:
 
-- Thoughtful engineering  
-- Smart sampling  
-- Strong modular components  
-- Memory-augmented retrieval  
+3. **Inference & LLM Integration:**
+* The system supports local execution via **Ollama** (Gemma 3 performs exceptionally well) and cloud-based inference via **Groq** (utilizing Llama 3-70B for high-reasoning tasks).
 
-Not just from massive GPU clusters and billion-parameter models.
+
+4. **Supermemory:** * To prevent context "noise," the system utilizes a **Supermemory** feature that maintains a clean, video-specific context. It refreshes upon new video uploads to ensure response quality remains high and relevant to the current file.
+
+---
+
+### **Key Insights & Experimental Inferences**
+
+* **The "Captioning Bottleneck":** The quality of the LLM’s response is directly proportional to the quality of the image-to-text descriptions. Upgrading from BLIP to more descriptive captioning models remains a primary goal for improving context.
+* **Model Scaling:** Moving from **Llama 3.1-8B** to **Llama 3-70B** resulted in a phenomenal leap in performance. While the 8B model struggled with simple queries when fed BLIP data, the 70B model (and Gemma 3) demonstrated the "reasoning' necessary to synthesize poor context into accurate answers.
+* **The Summary Challenge:** While RAG excels at specific "needle-in-a-haystack" queries, generating holistic video summaries remains a challenge for vanilla RAG architectures.
+
+---
+
+### **Future Roadmap**
+
+I am looking into transitioning from **Vanilla RAG** to a **Graph-based RAG** or a **Hierarchical RAG** architecture. This would allow the system to understand the relationship between scenes over time, rather than treating them as isolated data points.
+
 ## 🌿 Quick Start Guide for pypi package
 
 ### 1. Installation
@@ -154,6 +155,7 @@ gurrt/
 │
 └── README.md                         # Project documentation
 ```
+
 
 
 
