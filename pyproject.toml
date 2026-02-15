@@ -1,6 +1,6 @@
 [project]
 name = "gurrt"
-version = "0.1.5"
+version = "1.0.0"
 description = "An Intelligent Open-Source Video Understanding System A different path from traditional Large Video Language Models (LVLMs). Built for modularity, openness, and real-world usability."
 authors = [
     {name="Mohammad Owais", email = "owaismohammad2515@gmail.com"},
@@ -9,6 +9,9 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.12"
 license = "MIT"
+classifiers = [
+    "Programming Language :: Python :: 3.12"
+]
 dependencies = [
     "opencv-python>=4.13.0.92",
     "transformers>=5.1.0",
