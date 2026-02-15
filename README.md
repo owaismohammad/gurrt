@@ -37,9 +37,9 @@ uv pip install gurrt[cuda] --extra-index-url https://download.pytorch.org/whl/cu
 | `gurrt index-ollama <path> <model>` | Index using a specific Ollama model. |
 | `gurrt ask "<query>"` | Query your indexed video content. |
 
----
-
 The tool automatically optimizes performance by disabling unnecessary logging and tokenizer parallelism to ensure a clean CLI experience yet some logs do appear of Moviepy will resolve it in future iterations.
+
+---
 
 ### Why gurrt!?
 One cannot work with Large Video Language Models :
@@ -151,6 +151,7 @@ gurrt/
 │
 └── README.md                         # Project documentation
 ```
+
 
 
 
