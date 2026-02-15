@@ -32,7 +32,7 @@ custom_theme = Theme({
 console = Console(theme= custom_theme)
 
 
-app = typer.Typer(help= "🌿 gurrt: A Video Understanding Tool")
+app = typer.Typer(help= "🌿 gUrrT: A Video Understanding Tool")
 
 config_dir = Path(user_config_dir("gurrt"))
 config_dir.mkdir(exist_ok= True, parents= True)
@@ -40,7 +40,7 @@ config_dir.mkdir(exist_ok= True, parents= True)
 
 @app.callback()
 def main():
-    title = Text("🌿 Gurrt: A Video Understanding Tool", style="bold bright_green")
+    title = Text("🌿 gUrrT: A Video Understanding Tool", style="bold bright_green")
     console.print(Rule(title, style="green"))
 @app.command()
 def init():
