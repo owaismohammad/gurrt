@@ -6,18 +6,21 @@ An open-source alternative to monolithic Large Video Language Models built out o
 
 ### 1. Installation
 
-Set up **gurrt** using `uv` for speed and isolation:
+Set up **gurrt** using `uv`. Note: This project requires **Python 3.12**.
 
 ```bash
-# 1. Install uv and create environment
+# 1. Install uv and set Python version
 pip install uv
 uv venv
+uv python pin 3.12
+
+# 2. Activate environment
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 
-# 2. Install gurrt (CPU)
+# 3. Install gurrt (Standard/CPU)
 uv pip install gurrt
 
-# 3. OR Install with GPU Support
+# 4. OR Install with GPU Support
 uv pip install gurrt[cuda] --extra-index-url https://download.pytorch.org/whl/cu121
 
 ```
@@ -28,19 +31,17 @@ uv pip install gurrt[cuda] --extra-index-url https://download.pytorch.org/whl/cu
 
 | Command | Description |
 | --- | --- |
-| `gurrt init` | Set up API keys (Groq, Supermemory, Ollama). |
-| `gurrt models-download` | Pre-download and cache AI models locally. |
-| `gurrt index <path>` | Process a video (frames & audio) for searching. |
+| `gurrt init` | Configure API keys (Groq, Supermemory, Ollama). |
+| `gurrt models-download` | Download and cache AI models locally. |
+| `gurrt index <path>` | Extract frames and audio for search. |
 | `gurrt index-ollama <path> <model>` | Index using a specific Ollama model. |
-| `gurrt ask "<query>"` | Ask questions about your indexed video. |
+| `gurrt ask "<query>"` | Query your indexed video content. |
 
 ---
 
-### 🛠 Environment Details
-
 The tool automatically optimizes performance by disabling unnecessary logging and tokenizer parallelism to ensure a clean CLI experience yet some logs do appear of Moviepy will resolve it in future iterations.
 
-## The Challenge
+### Why gurrt!?
 One cannot work with Large Video Language Models :
 
 - Expensive to set up  
@@ -150,6 +151,7 @@ gurrt/
 │
 └── README.md                         # Project documentation
 ```
+
 
 
 
