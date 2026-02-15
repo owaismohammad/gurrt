@@ -1,5 +1,5 @@
 from gurrt.config.config import Settings
-from gurrt.utils.utils import device, rerank, rerank_docs, caption_frame_collection
+from gurrt.utils.utils import rerank, rerank_docs, caption_frame_collection
 from gurrt.core.vectordb import VectorDB
 import torch
 
@@ -13,7 +13,8 @@ class SearchService:
         self.cache_dir = self.settings.MODEL_CACHE_DIR
         self.db = VectorDB(str(self.settings.CHROMA_DB_PATH))
         
-    def _embed_text(self, query):
+    def _embed_text(self, query,
+                    device):
         text_embedding  = self.processor(text = [query], return_tensors = 'pt').to(device)
     
         with torch.no_grad():
@@ -24,9 +25,14 @@ class SearchService:
         text_features = text_features.cpu().numpy()[0]  # shape (512,)
         
         return text_features
-    def query_collection(self, query: str, n_results: int = 10):
+    def query_collection(self,
+                         device,
+                         query: str,
+                         n_results: int = 10
+                         ):
         
-        self.text_features = self._embed_text(query=query)
+        self.text_features = self._embed_text(query=query,
+                                              device = device)
         
         results = self.db.search_frame(
         query_embedding= self.text_features,
@@ -37,8 +43,16 @@ class SearchService:
         n_results= n_results
     )   
         
-        results_reranked = rerank(query, results, str(self.cache_dir), n_results)
-        results_reranked_audio = rerank_docs(query, results_audio, str(self.cache_dir), n_results)
+        results_reranked = rerank(query,
+                                  results, 
+                                  str(self.cache_dir),
+                                  device,
+                                  n_results)
+        results_reranked_audio = rerank_docs(query,
+                                             results_audio,
+                                             str(self.cache_dir),
+                                             device,
+                                             n_results)
         
         captions_list = caption_frame_collection(results_reranked)
         asr_list = results_reranked_audio["documents"][0]

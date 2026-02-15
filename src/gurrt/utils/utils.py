@@ -14,7 +14,6 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from gurrt.config.config import Settings
 
-device = "cuda" if torch.cuda.is_available() and torch.cuda.mem_get_info(0)[1] >= 4* 10**9 else "cpu"
 
 
 
@@ -63,7 +62,7 @@ def generate_captions_in_batches(batch_of_frames,
                                  clip_processor, 
                                  blip_model, 
                                  blip_processor, 
-                                 device="cuda"):
+                                 device):
     clip_inputs = clip_processor(images=batch_of_frames, return_tensors="pt").to(device)
     blip_inputs = blip_processor(images = batch_of_frames, return_tensors = 'pt').to(device)
     with torch.no_grad():
@@ -71,24 +70,25 @@ def generate_captions_in_batches(batch_of_frames,
         clip_outputs = clip_outputs.pooler_output
         clip_embeddings = clip_outputs / clip_outputs.norm(p=2, dim=-1, keepdim=True)
         blip_output_ids = blip_model.generate(**blip_inputs,
-                                        max_length = 300, # run on 6gb vram
-                                        min_length = 100,
-                                        no_repeat_ngram_size=3,
-                                        repetition_penalty=1.5,
-                                        early_stopping=True,
-                                        do_sample=False,
-                                        num_beams = 3,
+                                        # max_length = 300, # run on 6gb vram
+                                        # min_length = 100,
+                                        # no_repeat_ngram_size=3,
+                                        # repetition_penalty=1.5,
+                                        # early_stopping=True,
+                                        # do_sample=False,
+                                        # num_beams = 3,
                                         )
         captions = blip_processor.batch_decode(blip_output_ids, skip_special_tokens=True)
 
     embeddings_list = clip_embeddings.cpu().numpy().tolist()
-    del clip_inputs
-    del blip_inputs
-    del clip_embeddings
-    del blip_output_ids
+    if device == "cuda":
+        del clip_inputs
+        del blip_inputs
+        del clip_embeddings
+        del blip_output_ids
 
-    torch.cuda.empty_cache()
-    torch.cuda.ipc_collect()
+        torch.cuda.empty_cache()
+        torch.cuda.ipc_collect()
    
 
     return captions, embeddings_list
@@ -121,7 +121,13 @@ def frame_listing(scene_list, video_path: Path):
             pbar.update(1)
     return frame_PIL, timestamps_list, ids, fps
 
-def batched_captioning(frame_list: list, batch_size: int, clip_model, clip_processor, blip_model, blip_processor):
+def batched_captioning(frame_list: list,
+                       batch_size: int,
+                       clip_model,
+                       clip_processor,
+                       blip_model,
+                       blip_processor,
+                       device):
     caption_list = []
     embedding_list = []
     
@@ -133,7 +139,8 @@ def batched_captioning(frame_list: list, batch_size: int, clip_model, clip_proce
                                                             clip_model= clip_model,
                                                             clip_processor= clip_processor,
                                                             blip_model= blip_model,
-                                                            blip_processor= blip_processor)
+                                                            blip_processor= blip_processor,
+                                                            device= device)
             caption_list.extend(caption)
             embedding_list.extend(embedding)
             pbar.update(1)
@@ -172,7 +179,11 @@ def generate_caption(frame,buffer, model: str):
 
 
 
-def rerank(query: str, results, MODEL_DIR:str, top_k: int = 10) -> Dict[str, Any]:
+def rerank(query: str,
+           results,
+           MODEL_DIR:str,
+           device,
+           top_k: int = 10) -> Dict[str, Any]:
     """
     Performs 'Rank CoT' retrieval:
     1. Takes initial results from ChromaDB.
@@ -213,7 +224,11 @@ def rerank(query: str, results, MODEL_DIR:str, top_k: int = 10) -> Dict[str, Any
         'distances': [final_dists]
     }
     
-def rerank_docs(query: str, results, MODEL_DIR: str, top_k: int = 10) -> Dict[str, Any]:
+def rerank_docs(query: str,
+                results,
+                MODEL_DIR: str,
+                device,
+                top_k: int = 10) -> Dict[str, Any]:
     """
     Performs 'Rank CoT' retrieval:
     1. Takes initial results from ChromaDB.
@@ -248,7 +263,12 @@ def rerank_docs(query: str, results, MODEL_DIR: str, top_k: int = 10) -> Dict[st
         'metadatas': [final_metas],
         'distances': [final_dists]
     }    
-def uniform_frame_sampling(path: Path, clip_model, clip_processor, blip_processor, blip_model):
+def uniform_frame_sampling(path: Path,
+                           clip_model,
+                           clip_processor,
+                           blip_processor,
+                           blip_model,
+                           device):
     cap= cv2.VideoCapture(path)
     fps = cap.get(cv2.CAP_PROP_FPS)
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -302,7 +322,11 @@ def uniform_frame_sampling(path: Path, clip_model, clip_processor, blip_processo
             pbar.update(1)
     return embeddings, metadatas, ids
 
-def uniform_frame_sampling_ollama(video_path: Path, model_name: str, clip_model, clip_processor):
+def uniform_frame_sampling_ollama(video_path: Path,
+                                  model_name: str,
+                                  clip_model,
+                                  clip_processor, 
+                                  device):
     cap= cv2.VideoCapture(video_path)
     fps = cap.get(cv2.CAP_PROP_FPS)
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -345,7 +369,56 @@ def uniform_frame_sampling_ollama(video_path: Path, model_name: str, clip_model,
             frame_no +=1
             pbar.update(1)
     return embeddings, metadatas, ids
+def detect_scenes(video_path,
+                  scene_list,
+                  clip_processor,
+                  clip_model,
+                  model,
+                  device):
+    cap = cv2.VideoCapture(video_path)   
+    embeddings = []
+    metadatas = []
+    ids = []
+    
+    with tqdm(total = len(scene_list), desc = "Processing frames") as pbar:
+        for i, scene in enumerate(scene_list):
+            start_time, end_time = scene[0].get_seconds(), scene[1].get_seconds()
+            mid_time = (start_time + end_time) / 2
+            timestamps = mid_time
+            labels = "middle"
+            
+            buffer = BytesIO()
+            cap.set(cv2.CAP_PROP_POS_MSEC, timestamps * 1000)
+            ret, frame = cap.read()
+            
+            if ret:
+                img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                image = Image.fromarray(img_rgb)
+                caption=generate_caption(buffer=buffer,
+                                         frame = image,
+                                         model = model)
+                print(caption)
+                inputs = clip_processor(images = image, return_tensors = 'pt').to(device)
+                with torch.no_grad():
+                    outputs =clip_model.get_image_features(inputs.pixel_values)
+                image_embedding = outputs.pooler_output
+                image_embedding = image_embedding / image_embedding.norm(dim = -1, keepdim= True)
+                image_embedding = image_embedding.squeeze(0).cpu().numpy().tolist()
+                timestamp_sec = timestamps*1000
+                frame_id = f"{video_path}:{timestamp_sec}"
+            
+                ids.append(frame_id)
+                embeddings.append(image_embedding)
 
+                metadatas.append({
+                    "frame_idx": f"frame_no_{i}_{labels}",
+                    "caption": caption,
+                    "timestamp_ms": timestamp_sec,
+                    "source_path": video_path
+                })
+            pbar.update(1)
+               
+    return embeddings, metadatas, ids
 # def download_video_audio(url):
 #     try:
 #         download_dir = "./outputs"  # Change to your existing directory

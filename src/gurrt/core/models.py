@@ -9,7 +9,7 @@ class ModelManager:
     def __init__(self, settings: Settings):
         
         self.device = "cuda" if torch.cuda.is_available() and torch.cuda.mem_get_info(0)[1]>= 4* 10**9 else "cpu"
-        
+        print(self.device)
         self.settings = settings
         self.cache = self.settings.MODEL_CACHE_DIR
         
@@ -59,9 +59,13 @@ class ModelManager:
         self._free_gpu()
         
     def get_whisper(self):
+        if self.device == "cuda":
+            compute_type = "int8_float16"
+        else:
+            compute_type = "int8"
         self._whisper = WhisperModel(str(self.settings.WHISPER_MODEL),
                                      device= self.device,
-                                     compute_type="int8_float16")
+                                     compute_type=compute_type)
         return self._whisper
     
     def release_whisper(self):

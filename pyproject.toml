@@ -1,6 +1,6 @@
 [project]
 name = "gurrt"
-version = "0.1.1"
+version = "0.1.5"
 description = "An Intelligent Open-Source Video Understanding System A different path from traditional Large Video Language Models (LVLMs). Built for modularity, openness, and real-world usability."
 authors = [
     {name="Mohammad Owais", email = "owaismohammad2515@gmail.com"},
@@ -8,11 +8,8 @@ authors = [
 ]
 readme = "README.md"
 requires-python = ">=3.12"
-license = {text = "MIT"}
+license = "MIT"
 dependencies = [
-    "torch",
-    "torchvision",
-    "torchaudio",
     "opencv-python>=4.13.0.92",
     "transformers>=5.1.0",
     "accelerate>=1.12.0",
@@ -35,7 +32,12 @@ dependencies = [
     "typer>=0.21.1",
     "opencv-python-headless>=4.13.0.92",
 ]   
-
+[project.optional-dependencies]
+cuda = [
+    "torch",
+    "torchvision",
+    "torchaudio",
+]
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
