@@ -1,6 +1,6 @@
 [project]
 name = "gurrt"
-version = "1.0.2"
+version = "1.0.3"
 description = "An Intelligent Open-Source Video Understanding System A different path from traditional Large Video Language Models (LVLMs). Built for modularity, openness, and real-world usability."
 authors = [
     {name="Mohammad Owais", email = "owaismohammad2515@gmail.com"},
