@@ -1,0 +1,634 @@
+from pathlib import Path
+from typing import Dict, Any
+from ollama import chat
+import moviepy.editor as mp
+from sentence_transformers import CrossEncoder
+import torch
+import cv2
+from io import BytesIO
+from tqdm import tqdm
+from PIL import Image
+import imagehash
+from scenedetect import open_video, SceneManager
+from scenedetect.detectors import ContentDetector
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+from gurrt.config.config import Settings
+
+
+
+
+def audio_extraction(path: Path):
+    settings = Settings()
+    audio_file = settings.AUDIO_PATH
+    video = mp.VideoFileClip(path)
+    audio = video.audio
+    audio.write_audiofile(audio_file)
+    
+    audio.close()
+    video.close()
+    return audio_file
+
+def audio_to_text(audio_path, model) -> str:
+    segments, info = model.transcribe(audio_path, beam_size=5)
+    text = ""
+    for segment in segments:
+        text+=segment.text
+    return text
+
+def chunk_text(text):
+        
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size = 300,
+        chunk_overlap = 40
+    )
+    chunked_text = text_splitter.split_text(text=text)
+    return chunked_text
+def scene_split(video_path):
+    print("--- Detecting shot boundaries with PySceneDetect ---")
+    video = open_video(video_path)
+    scene_manager = SceneManager()
+    scene_manager.add_detector(ContentDetector())
+
+    try:
+        scene_manager.detect_scenes(video, show_progress=True)
+        scene_list = scene_manager.get_scene_list()
+    except Exception as e:
+        print("Scene detection failed:", e)
+        scene_list = []
+    return scene_list
+
+def frame_listing_uniform(video_path: Path):
+    cap= cv2.VideoCapture(video_path)
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    
+    frame_idx = range(0, total_frames, int(fps))
+
+    frame_PIL = []
+    timestamps_list = []
+    ids = []
+    with tqdm(total = len(frame_idx), desc="\033[1;32mProcessing frames...\033[0m") as pbar: 
+        for frame_no in frame_idx:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_no)
+            ret, frame = cap.read()
+            if not ret:
+                continue
+            timestamp_sec = cap.get(cv2.CAP_PROP_POS_MSEC) 
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            
+            image = Image.fromarray(frame)
+            frame_id = f"{video_path}:{timestamp_sec}:Uniform"
+            
+            frame_PIL.append(image)
+            timestamps_list.append(timestamp_sec)
+            ids.append(frame_id)
+            pbar.update(1)
+        cap.release()
+    return frame_PIL, timestamps_list, ids, fps
+
+def generate_captions_in_batches(batch_of_frames, 
+                                 clip_model, 
+                                 clip_processor, 
+                                 blip_model, 
+                                 blip_processor, 
+                                 device):
+    clip_inputs = clip_processor(images=batch_of_frames, return_tensors="pt").to(device)
+    blip_inputs = blip_processor(images = batch_of_frames, return_tensors = 'pt').to(device)
+    with torch.no_grad():
+        clip_outputs = clip_model.get_image_features(clip_inputs.pixel_values)
+        clip_outputs = clip_outputs.pooler_output
+        clip_embeddings = clip_outputs / clip_outputs.norm(p=2, dim=-1, keepdim=True)
+        blip_output_ids = blip_model.generate(**blip_inputs,
+                                        # max_length = 300, # run on 6gb vram
+                                        min_length = 15,
+                                        # no_repeat_ngram_size=3,
+                                        # repetition_penalty=1.5,
+                                        # early_stopping=True,
+                                        # do_sample=False,
+                                        num_beams = 3,
+                                        )
+        captions = blip_processor.batch_decode(blip_output_ids, skip_special_tokens=True)
+
+    embeddings_list = clip_embeddings.cpu().numpy().tolist()
+    if device == "cuda":
+        del clip_inputs
+        del blip_inputs
+        del clip_embeddings
+        del blip_output_ids
+
+        torch.cuda.empty_cache()
+        torch.cuda.ipc_collect()
+   
+
+    return captions, embeddings_list
+
+def frame_listing(scene_list, video_path: Path):
+    cap = cv2.VideoCapture(video_path)
+    fps = cap.get(cv2.CAP_PROP_FPS)   
+    ids = []
+    frame_PIL = []
+    timestamps_list = []
+    
+    with tqdm(total = len(scene_list), desc="\033[1;32mProcessing frames...\033[0m") as pbar: 
+        for i, scene in enumerate(scene_list):
+            start_time, end_time = scene[0].get_seconds(), scene[1].get_seconds()
+            mid_time = (start_time + end_time) / 2
+            timestamps = [start_time, mid_time, end_time]
+            labels = ["initial", "middle", "final"]
+            
+            for t, label in zip(timestamps, labels):
+                cap.set(cv2.CAP_PROP_POS_MSEC, t * 1000)
+                ret, frame = cap.read()
+                
+                if ret:
+                    img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                    image = Image.fromarray(img_rgb)
+                    frame_PIL.append(image)
+                    timestamps_list.append(t)
+                    frame_id = f"{video_path}:{t}:{label}"
+                    ids.append(frame_id)
+            pbar.update(1)
+    return frame_PIL, timestamps_list, ids, fps
+
+def batched_captioning(frame_list: list,
+                       batch_size: int,
+                       clip_model,
+                       clip_processor,
+                       blip_model,
+                       blip_processor,
+                       device):
+    caption_list = []
+    embedding_list = []
+    
+    with tqdm(total = (len(frame_list) + batch_size -1 ) // batch_size,
+              desc = "\033[1;32mAnalyzing video visuals...\033[0m") as pbar:
+        for i in range(0, len(frame_list),batch_size):
+            batch = frame_list[i:i+batch_size]
+            caption , embedding = generate_captions_in_batches(batch, 
+                                                            clip_model= clip_model,
+                                                            clip_processor= clip_processor,
+                                                            blip_model= blip_model,
+                                                            blip_processor= blip_processor,
+                                                            device= device)
+            caption_list.extend(caption)
+            embedding_list.extend(embedding)
+            pbar.update(1)
+    return caption_list, embedding_list           
+
+
+def caption_frame_collection(results_reranked: Dict[str, Any]) -> list:
+    caption_list = []
+    metadatas = results_reranked["metadatas"][0]
+    for i, metadata in enumerate(metadatas):
+        if metadata["caption"]:
+            caption_list.append(metadata["caption"])
+                
+    return caption_list
+
+def generate_caption(frame,buffer, model: str):
+    frame.save(buffer, format="JPEG")
+    img_bytes = buffer.getvalue()
+    response = chat(
+    model=model,
+    messages=[
+        {
+    "role": "system",
+    "content": "You are a helpful assistant that can analyze images and provide captions."
+    },
+
+    {
+        'role': 'user',
+        'content': 'What is in this image? .',
+        'images': [img_bytes],
+    }
+    ],
+    )
+
+    return response.message.content
+
+
+
+def rerank(query: str,
+           results,
+        #    MODEL_DIR:str,
+        #    device,
+           reranker_model,
+           top_k: int = 10) -> Dict[str, Any]:
+    """
+    Performs 'Rank CoT' retrieval:
+    1. Takes initial results from ChromaDB.
+    2. Reranks them using the CrossEncoder.
+    3. Returns the top_k most relevant results.
+    """
+    # reranker_model = CrossEncoder(f"{MODEL_DIR}/reranker_model", device=device) 
+    if not results['documents'][0]:
+        return results
+    captions = []
+    metadata = results['metadatas'][0]
+    
+    metadatas = results['metadatas'][0]
+    distances = results['distances'][0]
+    
+    for dic in metadata:
+        for key, val in dic.items():
+            if key == "caption":
+                captions.append(val)
+    pairs = [[query, caption] for caption in captions]
+    scores = reranker_model.predict(pairs)
+
+    ranked = sorted(zip(captions, metadatas, distances, scores), key=lambda x: x[3], reverse=True)
+
+    final_cap = []
+    final_metas = []
+    final_dists = []
+
+    for cap, meta, dist, score in ranked[:top_k]:
+        meta['relevance_score'] = float(score)
+        final_cap.append(cap)
+        final_metas.append(meta)
+        final_dists.append(dist)
+
+    return {
+        'captions': [final_cap],
+        'metadatas': [final_metas],
+        'distances': [final_dists]
+    }
+    
+def rerank_docs(query: str,
+                results,
+                # MODEL_DIR: str,
+                # device,
+                reranker_model,
+                top_k: int = 10) -> Dict[str, Any]:
+    """
+    Performs 'Rank CoT' retrieval:
+    1. Takes initial results from ChromaDB.
+    2. Reranks them using the CrossEncoder.
+    3. Returns the top_k most relevant results.
+    """
+    # reranker_model = CrossEncoder(f"{MODEL_DIR}/reranker_model", device=device)
+    if not results['documents'][0]:
+        return results
+
+    documents = results['documents'][0]
+    metadatas = results['metadatas'][0]
+    distances = results['distances'][0]
+
+    pairs = [[query, doc] for doc in documents]
+    scores = reranker_model.predict(pairs)
+
+    ranked = sorted(zip(documents, metadatas, distances, scores), key=lambda x: x[3], reverse=True)
+
+    final_docs = []
+    final_metas = []
+    final_dists = []
+
+    for doc, meta, dist, score in ranked[:top_k]:
+        meta['relevance_score'] = float(score)
+        final_docs.append(doc)
+        final_metas.append(meta)
+        final_dists.append(dist)
+
+    return {
+        'documents': [final_docs],
+        'metadatas': [final_metas],
+        'distances': [final_dists]
+    }    
+def uniform_frame_sampling(path: Path,
+                           clip_model,
+                           clip_processor,
+                           blip_processor,
+                           blip_model,
+                           device):
+    cap= cv2.VideoCapture(path)
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    
+    frame_idx = range(0, total_frames, int(fps))
+    # frame_no = 0
+    embeddings = []
+    metadatas = []
+    ids = []
+    # buffer = BytesIO()
+    with tqdm(total = len(frame_idx), desc="\033[1;32mProcessing frames...\033[0m") as pbar: 
+        for frame_no in frame_idx:
+        # while cap.isOpened():
+            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_no)
+            ret, frame = cap.read()
+            if not ret:
+                continue
+            # if frame_no % int(fps) == 0:
+            timestamp_sec = cap.get(cv2.CAP_PROP_POS_MSEC) 
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            image = Image.fromarray(frame)
+            inputs = clip_processor(images = image, return_tensors = 'pt').to(device)
+            # caption=generate_caption(image,buffer)
+            # print(caption)
+            blip_input = blip_processor(images = image,
+                                        text="Describe the scene in a factual, objective manner.",
+                                        return_tensors = 'pt').to(device)
+            with torch.no_grad():
+                outputs = clip_model.get_image_features(inputs.pixel_values)
+                blip_outputs = blip_model.generate(**blip_input,
+                                                #    max_length = 60,
+                                                   min_length = 15,
+                                                #    no_repeat_ngram_size=2,
+                                                   num_beams = 3,
+                                                    )
+            
+            caption = blip_processor.decode(blip_outputs[0], skip_special_tokens=True)
+            image_embedding = outputs.pooler_output
+            image_embedding = image_embedding / image_embedding.norm(dim = -1, keepdim= True)
+            image_embedding = image_embedding.squeeze(0).cpu().numpy().tolist()
+            frame_id = f"{path}:{timestamp_sec}"
+            
+            ids.append(frame_id)
+            embeddings.append(image_embedding)
+
+            metadatas.append({
+                "frame_idx": frame_no,
+                "caption": caption,
+                "timestamp_ms": timestamp_sec,
+                "fps": fps,
+                "source_path": str(path)
+            })
+            
+            # frame_no +=1
+            pbar.update(1)
+    return embeddings, metadatas, ids
+
+def uniform_frame_sampling_ollama(video_path: Path,
+                                  model_name: str,
+                                  clip_model,
+                                  clip_processor, 
+                                  device):
+    cap= cv2.VideoCapture(video_path)
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    
+    frames_idx = range(0, total_frames, int(fps))
+    
+    # frame_no = 0
+    embeddings = []
+    metadatas = []
+    ids = []
+    
+    with tqdm(total = len(frames_idx), desc="\033[1;32mProcessing frames...\033[0m") as pbar: 
+        for frame_no in frames_idx:
+        # while cap.isOpened():
+            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_no)
+            ret, frame = cap.read()
+            if not ret:
+                continue
+            # if frame_no % int(fps) == 0:
+            timestamp_sec = cap.get(cv2.CAP_PROP_POS_MSEC) 
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            image = Image.fromarray(frame)
+            inputs = clip_processor(images = image, return_tensors = 'pt').to(device)
+            buffer = BytesIO()
+            caption=generate_caption(image,buffer, model_name)
+            
+            with torch.no_grad():
+                outputs = clip_model.get_image_features(inputs.pixel_values)
+            image_embedding = outputs.pooler_output
+            image_embedding = image_embedding / image_embedding.norm(dim = -1, keepdim= True)
+            image_embedding = image_embedding.squeeze(0).cpu().numpy().tolist()
+            frame_id = f"{video_path}:{timestamp_sec}"
+            
+            ids.append(frame_id)
+            embeddings.append(image_embedding)
+
+            metadatas.append({
+                "frame_idx": frame_no,
+                "caption": caption,
+                "timestamp_ms": timestamp_sec,
+                "fps": fps,
+                "source_path": str(video_path)
+            })
+            
+            # frame_no +=1
+            pbar.update(1)
+    return embeddings, metadatas, ids
+def detect_scenes(video_path,
+                  scene_list,
+                  clip_processor,
+                  clip_model,
+                  model,
+                  device):
+    cap = cv2.VideoCapture(video_path)   
+    embeddings = []
+    metadatas = []
+    ids = []
+    
+    with tqdm(total = len(scene_list), desc = "Processing frames") as pbar:
+        for i, scene in enumerate(scene_list):
+            start_time, end_time = scene[0].get_seconds(), scene[1].get_seconds()
+            mid_time = (start_time + end_time) / 2
+            timestamps = mid_time
+            labels = "middle"
+            
+            buffer = BytesIO()
+            cap.set(cv2.CAP_PROP_POS_MSEC, timestamps * 1000)
+            ret, frame = cap.read()
+            
+            if ret:
+                img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                image = Image.fromarray(img_rgb)
+                caption=generate_caption(buffer=buffer,
+                                         frame = image,
+                                         model = model)
+                inputs = clip_processor(images = image, return_tensors = 'pt').to(device)
+                with torch.no_grad():
+                    outputs =clip_model.get_image_features(inputs.pixel_values)
+                image_embedding = outputs.pooler_output
+                image_embedding = image_embedding / image_embedding.norm(dim = -1, keepdim= True)
+                image_embedding = image_embedding.squeeze(0).cpu().numpy().tolist()
+                timestamp_sec = timestamps*1000
+                frame_id = f"{video_path}:{timestamp_sec}"
+            
+                ids.append(frame_id)
+                embeddings.append(image_embedding)
+
+                metadatas.append({
+                    "frame_idx": f"frame_no_{i}_{labels}",
+                    "caption": caption,
+                    "timestamp_ms": timestamp_sec,
+                    "source_path": str(video_path)
+                })
+            pbar.update(1)
+               
+    return embeddings, metadatas, ids
+
+
+def temporal_persistence_filter(video_path,
+                                fps_selected: int = 2,
+                                hash_threshold : int = 12,
+                                persistence_window_sec : float = 5.0,
+                                vote_ratio : float = 0.6,
+                                max_interval_sec: float = 60.0,
+                                min_interval_sec: float = 2.0):
+    """
+    Pass 2 — Persistence State Machine + Pass 3 — Re-read selected frames.
+
+    The state machine has three states:
+
+        STABLE:
+            Watching for a hash spike. Every frame is compared to
+            reference_hash (the last known stable slide state).
+            If Hamming distance > hash_threshold → move to CANDIDATE.
+
+        CANDIDATE:
+            A spike was detected. We don't trust it yet.
+            Collect distances for the next persistence_window_sec seconds.
+            Two outcomes after the window expires:
+
+              CONFIRMED  (>= vote_ratio of window frames still above threshold)
+                → Real slide change. Select the candidate frame.
+                → Update reference_hash to current hash (stable new state).
+
+              FALSE POSITIVE (majority of frames returned below threshold)
+                → Speaker moved and walked back. Discard silently.
+                → Keep old reference_hash.
+
+    Why this filters the speaker:
+        Speaker walks in front of slide → hash spikes → speaker walks away
+        → within the window, frames return below threshold → vote fails → discarded.
+
+        New slide appears → hash spikes → ALL subsequent frames in window
+        also show high distance (slide is still there) → vote passes → selected.
+
+    Parameters:
+        hash_threshold        : Hamming distance to consider "changed" (0=identical, 64=totally different)
+        scan_fps              : must match what was used in Pass 1
+        persistence_window_sec: how long a change must persist before it's trusted
+        vote_ratio            : fraction of window frames that must stay above threshold
+        min_interval_sec      : minimum gap between two selected frames
+        max_interval_sec      : if no change detected for this long, force-select a frame
+
+    Returns:
+        frame_PIL   : list of PIL images (confirmed frames only)
+        timestamps  : list of timestamp_ms for each selected frame
+        ids         : list of unique frame ID strings
+        fps         : video frame rate
+    """
+    cap = cv2.VideoCapture(video_path)
+    fps = int(cap.get(cv2.CAP_PROP_FPS))
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    req_fps = max(1, fps// fps_selected)
+    frame_idx = range(0, total_frames, req_fps)
+    
+    hashed_frames = [] 
+    with tqdm(total = len(frame_idx), desc = "\033[1;32mHashing frames...\033[0m") as pbar:
+        for frame_no in frame_idx:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_no)
+            ret, frame = cap.read()
+            if not ret:
+                continue
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            timestamp = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0
+            image = Image.fromarray(frame)
+            hash_score = imagehash.dhash(image= image)
+            
+            hashed_frames.append((frame_no, timestamp, hash_score))
+            pbar.update(1)
+
+    cap.release()
+    
+    STABLE, CANDIDATE = "STABLE", "CANDIDATE"
+    state = STABLE
+    ref_hash = None
+    candidate = None
+    window_start = None
+    last_selected_sec = None
+    window_distances = []
+    selected_frames = []
+    with tqdm(total=len(hashed_frames), desc="\033[1;32mSelecting frames...\033[0m") as pbar:
+        for frame_no, timestamp, current_hash in hashed_frames:
+            if ref_hash is None:
+                ref_hash = current_hash
+                last_selected_sec = timestamp
+                continue
+            
+            if timestamp - last_selected_sec > max_interval_sec:
+                print("Max Interval Passed  with no frame selected so selecting frame by default")
+                selected_frames.append((frame_no, timestamp))
+                ref_hash = current_hash
+                last_selected_sec = timestamp
+                state = STABLE
+                window_distances = []
+                candidate = None
+                continue
+            
+            distance = current_hash - ref_hash
+            
+            if state == STABLE:
+                if distance > hash_threshold:
+                    state = CANDIDATE
+                    candidate = (frame_no, timestamp, current_hash)
+                    window_start = timestamp
+                    window_distances = [distance]
+            elif state == CANDIDATE:
+                window_distances.append(distance)
+                elapsed_time = timestamp - window_start
+                if elapsed_time >= persistence_window_sec:
+                    ratio = sum(d > hash_threshold for d in window_distances) / len(window_distances)
+                    time_ok = candidate[1] - last_selected_sec >= min_interval_sec
+                    if ratio > vote_ratio and time_ok:
+                        selected_frames.append((candidate[0], candidate[1]))
+                        ref_hash = candidate[2]
+                        last_selected_sec = candidate[1]
+                        
+                    state = STABLE
+                    candidate = None
+                    window_distances = []
+            pbar.update(1)
+    timestamp_sec = [f[1] for f in selected_frames]
+    frame_number = [f[0] for f in selected_frames]
+    ids = [f"{video_path}:{t}:Persistence_Filter" for t in timestamp_sec]
+    frame_PIL = []
+    cap = cv2.VideoCapture(video_path)
+    for idx in frame_number:
+        cap.set(cv2.CAP_PROP_POS_FRAMES, idx)
+        
+        ret, frame = cap.read()
+        if not ret:
+            continue
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        image = Image.fromarray(frame)
+        frame_PIL.append(image)
+    cap.release()
+    return frame_PIL, timestamp_sec, ids, fps
+# def download_video_audio(url):
+#     try:
+#         download_dir = "./outputs"  # Change to your existing directory
+#         os.makedirs(download_dir, exist_ok=True)
+#         video_opts = {
+#     '       outtmpl': f'{download_dir}/%(title)s_video.%(ext)s',  # Full path in template
+#             'format': 'bestvideo[height<=720]/bestvideo',
+#         }
+
+#         audio_opts = {
+#             'outtmpl': f'{download_dir}/%(title)s_audio.%(ext)s',
+#             'format': 'bestaudio/best',
+#             'postprocessors': [{
+#                 'key': 'FFmpegExtractAudio',
+#                 'preferredcodec': 'mp3',
+#                 'preferredquality': '192',
+#             }],
+        
+#         }
+#         print("Downloading video...")
+#         with yt_dlp.YoutubeDL(video_opts) as ydl:
+#             ydl.download([url])
+
+#         print("Downloading audio...")
+#         with yt_dlp.YoutubeDL(audio_opts) as ydl:
+#             ydl.download([url])
+#         print(f"Complete! Files in: {download_dir}")
+
+#     except Exception as e:
+#         print("unable to download video",e)
+        
+
+# download_video_audio("https://youtu.be/8fZJs0Z-2O8?si=6DAkZUOgmVVCcwYe")        
