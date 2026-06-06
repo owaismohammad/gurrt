@@ -8,6 +8,7 @@ import cv2
 from io import BytesIO
 from tqdm import tqdm
 from PIL import Image
+import imagehash
 from scenedetect import open_video, SceneManager
 from scenedetect.detectors import ContentDetector
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -458,6 +459,146 @@ def detect_scenes(video_path,
             pbar.update(1)
                
     return embeddings, metadatas, ids
+
+
+def temporal_persistence_filter(video_path,
+                                fps_selected: int = 2,
+                                hash_threshold : int = 12,
+                                persistence_window_sec : float = 5.0,
+                                vote_ratio : float = 0.6,
+                                max_interval_sec: float = 60.0,
+                                min_interval_sec: float = 2.0):
+    """
+    Pass 2 — Persistence State Machine + Pass 3 — Re-read selected frames.
+
+    The state machine has three states:
+
+        STABLE:
+            Watching for a hash spike. Every frame is compared to
+            reference_hash (the last known stable slide state).
+            If Hamming distance > hash_threshold → move to CANDIDATE.
+
+        CANDIDATE:
+            A spike was detected. We don't trust it yet.
+            Collect distances for the next persistence_window_sec seconds.
+            Two outcomes after the window expires:
+
+              CONFIRMED  (>= vote_ratio of window frames still above threshold)
+                → Real slide change. Select the candidate frame.
+                → Update reference_hash to current hash (stable new state).
+
+              FALSE POSITIVE (majority of frames returned below threshold)
+                → Speaker moved and walked back. Discard silently.
+                → Keep old reference_hash.
+
+    Why this filters the speaker:
+        Speaker walks in front of slide → hash spikes → speaker walks away
+        → within the window, frames return below threshold → vote fails → discarded.
+
+        New slide appears → hash spikes → ALL subsequent frames in window
+        also show high distance (slide is still there) → vote passes → selected.
+
+    Parameters:
+        hash_threshold        : Hamming distance to consider "changed" (0=identical, 64=totally different)
+        scan_fps              : must match what was used in Pass 1
+        persistence_window_sec: how long a change must persist before it's trusted
+        vote_ratio            : fraction of window frames that must stay above threshold
+        min_interval_sec      : minimum gap between two selected frames
+        max_interval_sec      : if no change detected for this long, force-select a frame
+
+    Returns:
+        frame_PIL   : list of PIL images (confirmed frames only)
+        timestamps  : list of timestamp_ms for each selected frame
+        ids         : list of unique frame ID strings
+        fps         : video frame rate
+    """
+    cap = cv2.VideoCapture(video_path)
+    fps = int(cap.get(cv2.CAP_PROP_FPS))
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    req_fps = max(1, fps// fps_selected)
+    frame_idx = range(0, total_frames, req_fps)
+    
+    hashed_frames = [] 
+    with tqdm(total = len(frame_idx), desc = "\033[1;32mHashing frames...\033[0m") as pbar:
+        for frame_no in frame_idx:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_no)
+            ret, frame = cap.read()
+            if not ret:
+                continue
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            timestamp = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0
+            image = Image.fromarray(frame)
+            hash_score = imagehash.dhash(image= image)
+            
+            hashed_frames.append((frame_no, timestamp, hash_score))
+            pbar.update(1)
+
+    cap.release()
+    
+    STABLE, CANDIDATE = "STABLE", "CANDIDATE"
+    state = STABLE
+    ref_hash = None
+    candidate = None
+    window_start = None
+    last_selected_sec = None
+    window_distances = []
+    selected_frames = []
+    with tqdm(total=len(hashed_frames), desc="\033[1;32mSelecting frames...\033[0m") as pbar:
+        for frame_no, timestamp, current_hash in hashed_frames:
+            if ref_hash is None:
+                ref_hash = current_hash
+                last_selected_sec = timestamp
+                continue
+            
+            if timestamp - last_selected_sec > max_interval_sec:
+                print("Max Interval Passed  with no frame selected so selecting frame by default")
+                selected_frames.append((frame_no, timestamp))
+                ref_hash = current_hash
+                last_selected_sec = timestamp
+                state = STABLE
+                window_distances = []
+                candidate = None
+                continue
+            
+            distance = current_hash - ref_hash
+            
+            if state == STABLE:
+                if distance > hash_threshold:
+                    state = CANDIDATE
+                    candidate = (frame_no, timestamp, current_hash)
+                    window_start = timestamp
+                    window_distances = [distance]
+            elif state == CANDIDATE:
+                window_distances.append(distance)
+                elapsed_time = timestamp - window_start
+                if elapsed_time >= persistence_window_sec:
+                    ratio = sum(d > hash_threshold for d in window_distances) / len(window_distances)
+                    time_ok = candidate[1] - last_selected_sec >= min_interval_sec
+                    if ratio > vote_ratio and time_ok:
+                        selected_frames.append((candidate[0], candidate[1]))
+                        ref_hash = candidate[2]
+                        last_selected_sec = candidate[1]
+                        
+                    state = STABLE
+                    candidate = None
+                    window_distances = []
+            pbar.update(1)
+    timestamp_sec = [f[1] for f in selected_frames]
+    frame_number = [f[0] for f in selected_frames]
+    ids = [f"{video_path}:{t}:Persistence_Filter" for t in timestamp_sec]
+    frame_PIL = []
+    cap = cv2.VideoCapture(video_path)
+    for idx in frame_number:
+        cap.set(cv2.CAP_PROP_POS_FRAMES, idx)
+        
+        ret, frame = cap.read()
+        if not ret:
+            continue
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        image = Image.fromarray(frame)
+        frame_PIL.append(image)
+    cap.release()
+    return frame_PIL, timestamp_sec, ids, fps
 # def download_video_audio(url):
 #     try:
 #         download_dir = "./outputs"  # Change to your existing directory
