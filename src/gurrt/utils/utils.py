@@ -52,7 +52,6 @@ def audio_to_text(audio_path, model, beam_size : int = 5) -> str:
     #     text += segments.text
     # return text
     text = "".join(segment.text for segment in segments)
-    print(text)
     return text
 def chunk_text(text):
     text_splitter = RecursiveCharacterTextSplitter(

@@ -15,14 +15,15 @@ class VideoRag:
         self.vectordb = VectorDB(str(self.settings.CHROMA_DB_PATH), reset=reset)
         self.llm = LLMService(self.settings)
         self.device = self.models.device
-        self.clip_model, self.clip_processor= self.models.get_clip()
         
-        self.reranker = self.models.get_reranker()
-        self.search = SearchService(clip_model=self.clip_model,
-                                    clip_processor=self.clip_processor,
-                                    reranker= self.reranker,
-                                    vectordb= self.vectordb,
-                                    settings= self.settings)
+        self.clip_model, self.clip_processor= self.models.get_clip()
+        # self.reranker = self.models.get_reranker()
+        
+        # self.search = SearchService(clip_model=self.clip_model,
+        #                             clip_processor=self.clip_processor,
+        #                             reranker= self.reranker,
+        #                             vectordb= self.vectordb,
+        #                             settings= self.settings)
         
     def index_video(self, video_path:Path):
         if self.reset:
@@ -34,18 +35,19 @@ class VideoRag:
                     print("\033[1;32mSupermemory Not Cleared\033[0m")
             except:
                 print("\033[1;32mSupermemory Initialized✅\033[0m")
-        blip_model, blip_processor = self.models.get_blip()
+        # blip_model, blip_processor = self.models.get_blip()
         
         embeddings, metadatas, ids = scene_detection_frame_sampling(video_path= video_path,
                                                                     clip_model=self.clip_model,
                                                                     clip_processor=self.clip_processor,
-                                                                    blip_model=blip_model,
-                                                                    blip_processor=blip_processor,
+                                                                    # blip_model=blip_model,
+                                                                    # blip_processor=blip_processor,
+                                                                    models = self.models,
                                                                     device = self.device)
         self.vectordb.add_frames(ids=ids,
                                  embeddings=embeddings,
                                  metadata=metadatas)
-        self.models.release_blip()
+        # self.models.release_blip()
         
         
     def index_video_ollama(self, video_path:Path, model_name: str):
@@ -81,13 +83,22 @@ class VideoRag:
                               metadata=metadatas,
                               documents= chunked_text)
         self.models.release_whisper()
+        self.models.release_all()
         
     async def ask(self, query:str):
-        caption_list, asr_list = self.search.query_collection(self.device,
+        reranker = self.models.get_reranker()
+        
+        search = SearchService(clip_model=self.clip_model,
+                                    clip_processor=self.clip_processor,
+                                    reranker= reranker,
+                                    vectordb= self.vectordb,
+                                    settings= self.settings)
+        caption_list, asr_list = search.query_collection(self.device,
                                                               query,
                                                               n_results=10,
                                                               )
         result = await self.llm.query_llm(query, 
                                           caption_list=caption_list, 
                                           asr_list=asr_list)
+        self.models.release_all()
         return result

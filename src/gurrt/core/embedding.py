@@ -1,4 +1,5 @@
 from pathlib import Path
+from gurrt.core.models import ModelManager
 from gurrt.utils.utils import detect_scenes, frame_listing_uniform, scene_split, frame_listing, batched_captioning, temporal_persistence_filter, uniform_frame_sampling, uniform_frame_sampling_ollama
 
 
@@ -6,8 +7,9 @@ def scene_detection_frame_sampling(
                                    video_path: Path,
                                    clip_model, 
                                    clip_processor, 
-                                   blip_processor, 
-                                   blip_model,
+                                   models: ModelManager,
+                                #    blip_processor, 
+                                #    blip_model,
                                    device):
 
 #     scene_list = scene_split(video_path)
@@ -27,6 +29,7 @@ def scene_detection_frame_sampling(
 #         frame_PIL, timestamps_list, ids, fps = frame_listing(scene_list= scene_list, 
 #                                                              video_path= video_path)
     frame_PIL, timestamps_list, ids, fps = temporal_persistence_filter(video_path= video_path)
+    blip_model, blip_processor = models.get_blip()
     caption_list, embeddings_list = batched_captioning(frame_list= frame_PIL, 
                                                        batch_size=16, 
                                                        clip_model= clip_model, 
@@ -43,6 +46,7 @@ def scene_detection_frame_sampling(
             }
                 for i in range(len(caption_list))
                 ]
+    models.release_blip()
     return embeddings_list, metadatas, ids
 
 
