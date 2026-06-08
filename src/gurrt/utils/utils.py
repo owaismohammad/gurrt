@@ -575,15 +575,15 @@ def temporal_persistence_filter(video_path: Path,
                 pbar.update(1)
                 continue
 
-            if timestamp - last_selected_sec > max_interval_sec:
-                selected_frames.append((timestamp, frame.copy()))
-                ref_hash = current_hash
-                last_selected_sec = timestamp
-                state = STABLE
-                window_distances = []
-                candidate = None
-                pbar.update(1)
-                continue
+            # if timestamp - last_selected_sec > max_interval_sec:
+            #     selected_frames.append((timestamp, frame.copy()))
+            #     ref_hash = current_hash
+            #     last_selected_sec = timestamp
+            #     state = STABLE
+            #     window_distances = []
+            #     candidate = None
+            #     pbar.update(1)
+            #     continue
 
             distance = int(np.count_nonzero(current_hash ^ ref_hash))
 
