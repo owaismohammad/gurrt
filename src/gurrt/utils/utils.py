@@ -46,8 +46,10 @@ def audio_extraction(path: Path):
     return audio_file
 
 def audio_to_text(audio_path, model, beam_size : int = 5) -> str:
-    segments, info = model.transcribe(audio_path, beam_size= beam_size, vad_filter = True)
-    text = ""
+    # segments, info = model.transcribe(audio_path, beam_size= beam_size, vad_filter = True)
+    segments, info = model.transcribe(audio_path, batch_size=8, vad_filter=True)
+    segments = list(segments)
+    # text = ""
     # for segment in segments:
     #     text += segments.text
     # return text
