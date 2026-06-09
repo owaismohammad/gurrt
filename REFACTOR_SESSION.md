@@ -142,6 +142,92 @@ The state machine runs inline inside the single loop. When a frame enters `CANDI
 
 ---
 
+### Frame Sampling — FFmpeg Pipe + Adaptive Sampling
+
+**File:** `utils.py` → `temporal_persistence_filter()`
+
+#### Root cause of remaining slowness
+
+The single-pass `cap.grab()` loop fixed the random-seek problem but the pipe-level cost remained: `cap.read()` on sampled frames still returns full-resolution BGR (`width × height × 3` bytes per frame). For 1080p at 2fps over a 1-hour video that is ~43GB of frame data flowing through Python even though the only downstream consumer of each frame was a 9×8 hash computation. The hash itself was fast; the data volume was not.
+
+Additionally, `cap.grab()` on skipped frames still partially decodes P/B-frames at the codec level — H.264 inter-frame dependencies mean the codec must reconstruct intermediate frames to produce the next sampled one, even when `retrieve()` is never called.
+
+A second cost: `candidate` stored `frame.copy()` — a full-resolution BGR array on the heap — for every active candidate frame. At 1080p this is ~6MB held in RAM per candidate, and candidates accumulate for the full persistence window duration.
+
+#### What changed
+
+**Pass 1 — ffmpeg pipe at 72 bytes/frame (CPU only):**
+
+Replaced `cv2.VideoCapture` loop with a subprocess pipe from ffmpeg that outputs pre-scaled grayscale frames:
+
+```python
+proc = subprocess.Popen([
+    ffmpeg_exe,
+    "-threads", "0",           # auto multi-threaded H.264 decode (uses all CPU cores)
+    "-skip_frame", "noref",    # skip B-frames — non-reference frames never needed at 2fps output
+    "-i", str(video_path),
+    "-vf", f"fps={fps_selected},scale=9:8:flags=area",
+    "-f", "rawvideo", "-pix_fmt", "gray",
+    "pipe:1"
+], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+```
+
+Each frame arrives as 72 bytes (`9 × 8` gray). `np.frombuffer(raw, ...).reshape(8, 9)` + hash is all Python sees per frame. cv2 color conversion and resize are eliminated entirely — ffmpeg does both in C before bytes reach Python.
+
+`-threads 0` lets ffmpeg use all available CPU cores for H.264 decode (Ryzen 5 5600H: 6 cores / 12 threads).
+
+`-skip_frame noref` instructs the decoder to skip B-frames (non-reference frames). B-frames are bidirectionally predicted and never selected as output by the `fps=2` filter, so skipping their decode is safe. Saves 20–40% of decode work on typical H.264 lecture videos depending on GOP structure.
+
+**Adaptive sampling — `stable_fps` parameter:**
+
+Added `stable_fps=0.5` parameter. In STABLE state the state machine only needs to detect that *something* changed — checking every 2 seconds is sufficient. In CANDIDATE state the full 2fps resolution is needed to correctly time the persistence window.
+
+```python
+stable_step = max(1, round(fps_selected / stable_fps))  # e.g. round(2 / 0.5) = 4
+
+if state == STABLE and ref_hash is not None and (frame_index % stable_step) != 0:
+    continue  # drain 72 bytes, skip hash logic
+```
+
+- **STABLE**: 1 in every `stable_step` frames is hashed — effective 0.5fps scan rate
+- **CANDIDATE**: every frame is hashed — full 2fps resolution for the window vote
+- Transition is automatic: once a spike is detected and `state` becomes `CANDIDATE`, the `if state == STABLE` guard no longer fires and every frame is processed
+
+The skip fires *before* the numpy hash computation, not after — no wasted work on skipped frames.
+
+**Pass 2 — targeted cv2 seeks for confirmed frames only:**
+
+`candidate` no longer stores `frame.copy()`. Only `(timestamp, hash_bits)` is kept — 72 bytes per candidate instead of ~6MB.
+
+After the pipe closes, full-resolution frames are fetched only for confirmed timestamps:
+
+```python
+cap = cv2.VideoCapture(str(video_path))
+for ts in confirmed_timestamps:
+    cap.set(cv2.CAP_PROP_POS_MSEC, ts * 1000)
+    ret, frame = cap.read()
+    if ret:
+        frame_PIL.append(Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)))
+cap.release()
+```
+
+For a 1-hour lecture with ~40 confirmed slides this is 40 seeks. The random-seek cost per seek on an SSD for a confirmed frame is negligible (~5–15ms each).
+
+---
+
+#### Effect on the sampling pipeline
+
+| Dimension | After Step 2 (cap.grab loop) | After Step 3 (ffmpeg pipe + adaptive) |
+|-----------|------------------------------|----------------------------------------|
+| Pipe data volume (1hr 1080p) | ~43GB (full BGR per sampled frame) | ~518KB (72 bytes per frame) |
+| Frames hashed in STABLE state | All sampled frames (2fps × 3600s = 7,200) | ~25% of sampled frames (stable_step=4, effective 0.5fps) |
+| RAM held for candidate frame | ~6MB BGR copy per active candidate | 72 bytes (timestamp + hash only) |
+| Full-res reads | All confirmed frames + all candidates in memory since start | Only confirmed frames, fetched after pipe closes |
+| Decode threading | Single-threaded cv2 VideoCapture | Auto-threaded ffmpeg (`-threads 0`) |
+| B-frame decode | Forced by H.264 inter-dependency even with cap.grab() | Skipped (`-skip_frame noref`) |
+
+---
+
 ### Audio Pipeline — Three Independent Wins
 
 **File:** `utils.py` → `audio_extraction()`, `audio_to_text()`
@@ -234,7 +320,7 @@ Previously Whisper auto-downloaded to HuggingFace's global cache (`~/.cache/hugg
 | **HyDE (Hypothetical Document Embeddings)** | High | At query time, ask the LLM to generate a hypothetical frame caption for the query, embed it with CLIP, use that embedding for retrieval instead of the raw query. Bridges the phrasing gap between user questions and BLIP captions |
 | **Replace BLIP with a richer VLM** | High | BLIP captions for lecture slides are poor ("a whiteboard with writing on it"). moondream2 (1.8B) can read text directly off slides and fits on 6GB VRAM alongside CLIP. OCR (pytesseract/easyocr) is even faster for text-heavy slides and more accurate — hybrid: OCR when text is detected, moondream2 fallback for diagrams/blackboard. |
 | **Drop BLIP `num_beams=3` to 1** | High | Beam search in BLIP generate is ~2-3x slower than greedy (`num_beams=1`). One line change in `generate_captions_in_batches`. BLIP captioning is now the dominant bottleneck after audio and hashing were sped up. |
-| **`selected_frames` memory usage** | Medium | Currently stores `(timestamp, raw_bgr)` for all confirmed frames. For a 1-hour lecture with 150 slide changes at 1080p this is ~900MB. Fix: store `(frame_no, timestamp)` only, do a small re-read pass at the end (~150 seeks, fast). |
+| ~~**`selected_frames` memory usage**~~ | ~~Medium~~ | ~~Currently stores `(timestamp, raw_bgr)` for all confirmed frames. For a 1-hour lecture with 150 slide changes at 1080p this is ~900MB. Fix: store `(frame_no, timestamp)` only, do a small re-read pass at the end (~150 seeks, fast).~~ **Resolved in FFmpeg Pipe + Adaptive Sampling step** — `candidate` now stores only `(timestamp, hash_bits)`; full-res reads done in Pass 2 for confirmed frames only. |
 | **String concatenation in `audio_to_text`** | Medium | `text += segment.text` in a loop is O(n²). For 1-hour lectures with hundreds of segments this accumulates. Replace with `"".join(segment.text for segment in segments)`. |
 | **Debug `print(text)` in `asr.py`** | Medium | Line 19 dumps the entire transcript to terminal on every index run. Remove it. |
 | **`subprocess` import position in `utils.py`** | Low | Imported mid-file (line 32) instead of at the top with other imports. |

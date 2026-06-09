@@ -38,7 +38,6 @@ app = typer.Typer(help= "🌿 gUrrT: A Video Understanding Tool")
 config_dir = Path(user_config_dir("gurrt"))
 config_dir.mkdir(exist_ok= True, parents= True)
 
-
 @app.callback()
 def main():
     title = Text("🌿 gUrrT: A Video Understanding Tool", style="bold bright_green")
@@ -112,7 +111,7 @@ def models_download():
         download_models(cache_dir)
         progress.update(task, completed=100)
 
-    console.print("[success]✔ Models cached successfully![/success]")
+    console.print(f"[success]✔ Models cached successfully at {cache_dir}![/success]")
 
 
 

@@ -1,7 +1,7 @@
 import torch
 from transformers import  CLIPProcessor, CLIPModel, BlipProcessor, BlipForConditionalGeneration
 from sentence_transformers import CrossEncoder
-from faster_whisper import WhisperModel
+from faster_whisper import WhisperModel, BatchedInferencePipeline
 
 from gurrt.config.config import Settings
 from huggingface_hub import snapshot_download
@@ -70,7 +70,9 @@ class ModelManager:
                                      str(path),
                                      device= self.device,
                                      compute_type=compute_type)
-        return self._whisper
+        batched = BatchedInferencePipeline(model=self._whisper)
+        # return self._whisper
+        return batched
     
     def release_whisper(self):
         self._whisper = None
@@ -92,7 +94,7 @@ class ModelManager:
         self._reranker = None
         self._free_gpu()
         
-def download_models(cache_dir, model_name : str = "small"):
+def download_models(cache_dir, model_name : str = "distil-large-v2"):
     print("Downloading CLIP....")
     clip = CLIPModel.from_pretrained("openai/clip-vit-base-patch32", use_safetensors = True)
     proc = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
@@ -109,7 +111,7 @@ def download_models(cache_dir, model_name : str = "small"):
     reranker = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
     reranker.save(str(cache_dir / "reranker_model"))
     
-    print("Downloading Whisper....")
+    print(f"Downloading Whisper {model_name}....")
     snapshot_download(
         repo_id=f"Systran/faster-whisper-{model_name}",
         local_dir=str(cache_dir / "whisper_model")
