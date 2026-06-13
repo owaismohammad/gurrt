@@ -7,16 +7,17 @@ class Settings:
         home = Path(user_config_dir("gurrt"))
         home.mkdir(exist_ok=True, parents= True)
         
-        # config_file = home / "config.json"
-        # cfg = {}
+        config_file = home / "config.json"
+        cfg = {}
         
-        # if config_file.exists():
-        #     with open(config_file) as f:
-        #         cfg = json.load(f)
-        #     self.GROQ_API_KEY = cfg.get('GROQ_API_KEY')
-        #     self.SUPERMEMORY_API_KEY = cfg.get("SUPERMEMORY_API_KEY")
-        # else:
-        #     raise RuntimeError("API Keys not found")
+        if config_file.exists():
+            with open(config_file) as f:
+                cfg = json.load(f)
+            self.GROQ_API_KEY = cfg.get('GROQ_API_KEY')
+            self.SUPERMEMORY_API_KEY = cfg.get("SUPERMEMORY_API_KEY")
+            self.HuggingFace_Token = cfg.get("HuggingFace_Token")
+        else:
+            raise RuntimeError("API Keys not found")
         self.CLIP_MODEL = "openai/clip-vit-base-patch32"
         self.LLM_MODEL="llama-3.1-8b-instant"
         self.RERANKER_MODEL = 'cross-encoder/ms-marco-MiniLM-L-6-v2'

@@ -142,7 +142,10 @@ def download_models(cache_dir, model_name : str = "distil-large-v2"):
     reranker.save(str(cache_dir / "reranker_model"))
     
     print(f"Downloading Whisper {model_name}....")
+    
+    settings = Settings()
     snapshot_download(
         repo_id=f"Systran/faster-whisper-{model_name}",
-        local_dir=str(cache_dir / "whisper_model")
+        local_dir=str(cache_dir / "whisper_model"),
+        token= settings.HuggingFace_Token
     )

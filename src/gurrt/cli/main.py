@@ -60,6 +60,8 @@ def init():
     """
     groq_link = "https://console.groq.com/docs/models"
     supermemory_link = "https://supermemory.ai/docs/integrations/supermemory-sdk"
+    hf_token_link = "https://huggingface.co/settings/tokens"
+    hf_token_guide = "https://huggingface.co/docs/hub/en/security-tokens"
     config_file = config_dir / "config.json"
     console.print(
         Panel(
@@ -81,12 +83,23 @@ def init():
     )
     supermemory = Prompt.ask("[primary]Enter Supermemory API Key[/primary]", password=True)
 
-    
+    console.print(
+    Panel(
+        f"[info]Get your Hugging Face token here:[/info]\n"
+        f"[bold green]{hf_token_link}[/bold green]\n\n"
+        f"[info]Learn about authentication here:[/info]\n"
+        f"[bold green]{hf_token_guide}[/bold green]",
+        title="Hugging Face",
+        border_style="green"
+    )
+)
+    hf_token = Prompt.ask("[info]Enter HuggingFace Token[/info]", password=True)
     
     with open(config_file, "w") as f:
         json.dump({
             "GROQ_API_KEY": groq,
-            "SUPERMEMORY_API_KEY": supermemory,
+            "SUPERMEMORY_API_KEY": supermemory, 
+            "HuggingFace_Token": hf_token
         }, f, indent= 2)
         
     console.print(
