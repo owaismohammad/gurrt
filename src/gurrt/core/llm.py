@@ -22,7 +22,7 @@ class LLMService:
         chat_context = self.client_memory.search.documents(
             q= query,
             container_tags = ["Previous_Chat"],
-            limit = 3
+            limit = 1
         )
         parser = StrOutputParser()
         prompt = PromptTemplate(

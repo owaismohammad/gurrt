@@ -732,6 +732,10 @@ def _do_index_ollama(video_path_str: str, model_name: str) -> Optional[VideoRag]
 
 # ── Interactive REPL session ──────────────────────────────────────────────────
 
+def _clean_path(s: str) -> str:
+    return s.strip('"').strip("'")
+
+
 def _run_session() -> None:
     _rag: Optional[VideoRag] = None
     _indexed = False
@@ -794,13 +798,20 @@ def _run_session() -> None:
                     "or [primary]/index-ollama[/primary] first."
                 )
                 continue
-            with console.status("[info]Thinking...[/info]", spinner="dots"):
-                response = asyncio.run(_rag.ask(query=raw))
-            console.print(Panel(
-                Markdown(response),
-                title="[primary]Answer[/primary]",
-                border_style=ui.BORDER_PRIMARY,
-            ))
+            try:
+                with console.status("[info]Thinking...[/info]", spinner="dots"):
+                    response = asyncio.run(_rag.ask(query=raw))
+                console.print(Panel(
+                    Markdown(response),
+                    title="[primary]Answer[/primary]",
+                    border_style=ui.BORDER_PRIMARY,
+                ))
+            except Exception as e:
+                console.print(Panel(
+                    f"[error]{e}[/error]",
+                    title="[error]Query Failed[/error]",
+                    border_style=ui.BORDER_ERROR,
+                ))
             continue
 
         # ── Slash command ─────────────────────────────────────────────────────
@@ -837,9 +848,10 @@ def _run_session() -> None:
                     border_style=ui.BORDER_ERROR,
                 ))
                 continue
-            result = _do_index(Path(tokens[0]), tokens[1])
+            video_path = _clean_path(tokens[0])
+            result = _do_index(Path(video_path), tokens[1])
             if result is not None:
-                _rag, _indexed, _last_video = result, True, tokens[0]
+                _rag, _indexed, _last_video = result, True, video_path
 
         elif cmd == "index-llama":
             if not rest:
@@ -850,9 +862,10 @@ def _run_session() -> None:
                     border_style=ui.BORDER_ERROR,
                 ))
                 continue
-            result = _do_index_llama(rest)
+            video_path = _clean_path(rest)
+            result = _do_index_llama(video_path)
             if result is not None:
-                _rag, _indexed, _last_video = result, True, rest
+                _rag, _indexed, _last_video = result, True, video_path
 
         elif cmd == "index-ollama":
             tokens = rest.rsplit(maxsplit=1)
@@ -864,9 +877,10 @@ def _run_session() -> None:
                     border_style=ui.BORDER_ERROR,
                 ))
                 continue
-            result = _do_index_ollama(tokens[0], tokens[1])
+            video_path = _clean_path(tokens[0])
+            result = _do_index_ollama(video_path, tokens[1])
             if result is not None:
-                _rag, _indexed, _last_video = result, True, tokens[0]
+                _rag, _indexed, _last_video = result, True, video_path
 
         elif cmd == "clear":
             os.system("cls" if os.name == "nt" else "clear")
@@ -907,13 +921,20 @@ def _run_session() -> None:
             if not rest:
                 ui.info("Type your question after /ask, or just type it directly at the prompt.")
                 continue
-            with console.status("[info]Thinking...[/info]", spinner="dots"):
-                response = asyncio.run(_rag.ask(query=rest))
-            console.print(Panel(
-                Markdown(response),
-                title="[primary]Answer[/primary]",
-                border_style=ui.BORDER_PRIMARY,
-            ))
+            try:
+                with console.status("[info]Thinking...[/info]", spinner="dots"):
+                    response = asyncio.run(_rag.ask(query=rest))
+                console.print(Panel(
+                    Markdown(response),
+                    title="[primary]Answer[/primary]",
+                    border_style=ui.BORDER_PRIMARY,
+                ))
+            except Exception as e:
+                console.print(Panel(
+                    f"[error]{e}[/error]",
+                    title="[error]Query Failed[/error]",
+                    border_style=ui.BORDER_ERROR,
+                ))
 
         else:
             ui.warn(
