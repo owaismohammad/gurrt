@@ -2,6 +2,7 @@ from rich.console import Console
 from rich.theme import Theme
 from rich.rule import Rule
 from rich.text import Text
+from rich.align import Align
 from rich.progress import (
     Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn
 )
@@ -112,19 +113,25 @@ def get_prompt_tokens(indexed: bool) -> FormattedText:
 
 
 _BANNER = r"""
- ██████╗ ██╗   ██╗██████╗ ██████╗ ████████╗
-██╔════╝ ██║   ██║██╔══██╗██╔══██╗╚══██╔══╝
-██║  ███╗██║   ██║██████╔╝██████╔╝   ██║
-██║   ██║╚██╗ ██╔╝██╔══██╗██╔══██╗   ██║
-╚██████╔╝ ╚████╔╝ ██║  ██║██║  ██║   ██║
- ╚═════╝   ╚═══╝  ╚═╝  ╚═╝╚═╝  ╚═╝  ╚═╝
+ ██████╗  ██╗   ██╗ ██████╗  ██████╗  ████████╗
+██╔════╝  ██║   ██║ ██╔══██╗ ██╔══██╗ ╚══██╔══╝
+██║  ████╗██║   ██║ ██████╔╝ ██████╔╝    ██║   
+██║   ██║ ██║   ██║ ██╔══██╗ ██╔══██╗    ██║   
+╚██████╔╝ ╚██████╔╝ ██║  ██║ ██║  ██║    ██║   
+ ╚═════╝   ╚═════╝  ╚═╝  ╚═╝ ╚═╝  ╚═╝    ╚═╝  
 """
 
-
 def show_banner() -> None:
-    console.print(Text(_BANNER, style=f"bold {C_ACCENT}"))
-    console.print(Text("  gUrrT · Video RAG CLI", style=f"#ff9900"))
+    console.print()
+    console.print()
+    console.print(Align(Text(_BANNER.strip("\n"), style=f"bold {C_ACCENT}"), align="center"))
+    console.print()
+    console.print(Align(Text("Conversational Video Intelligence", style=f"dim {C_ACCENT}"), align="center"))
+    # console.print()
+    console.print(Align(Text("v2.0.0", style=f"dim"), align="center"))
+    console.print()
     console.print(Rule(style=BORDER_PRIMARY))
+    # console.print()
 
 
 def info(msg: str) -> None:
