@@ -14,14 +14,14 @@ from prompt_toolkit.lexers import Lexer
 # ══════════════════════════════════════════════════════════════════════════════
 
 # Rich color names — used in theme tokens, panel borders, rules, progress bars
-C_ACCENT   = "bright_cyan"   # primary accent: headings, borders, prompt arrow
+C_ACCENT   = "yellow1"       # primary accent: headings, borders, prompt arrow
 C_SUCCESS  = "bright_green"  # success messages and borders
 C_ERROR    = "bright_red"    # error messages and borders
-C_WARNING  = "yellow"        # warnings
+C_WARNING  = "orange1"       # warnings (orange — distinct from yellow accent)
 C_DIM      = "dim"           # muted / secondary text
 
 # Panel / table / rule border colors
-BORDER_PRIMARY = "cyan"       # informational panels (darker shade of C_ACCENT)
+BORDER_PRIMARY = "#0000ff"    # informational panels — blue
 BORDER_SUCCESS = C_SUCCESS    # success panels
 BORDER_ERROR   = C_ERROR      # error panels
 BORDER_WARNING = C_WARNING    # warning panels
@@ -32,19 +32,19 @@ STYLE_HEADER = f"bold {C_ACCENT}"
 # ── Prompt-toolkit REPL colors ────────────────────────────────────────────────
 # ANSI names or #rrggbb hex — controls the interactive prompt and slash-command
 # completion popup that appears when the user types "/"
-_PT_PROMPT_COLOR  = "ansicyan"   # "gurrt" name in the prompt line
-_PT_ARROW_COLOR   = "ansicyan"   # "❯" arrow
-_PT_DOT_ON        = "ansigreen"  # ● indicator when a video is indexed
-_PT_DOT_OFF       = "ansigray"   # ○ indicator when nothing is indexed
-_PT_POPUP_BG      = "#0d1b2a"    # completion popup background
-_PT_POPUP_SEL_BG  = "#006080"    # selected entry background
-_PT_POPUP_FG      = "#a0b4c8"    # unselected entry foreground
-_PT_POPUP_SEL_FG  = "#ffffff"    # selected entry foreground
-_PT_META_FG       = "#506070"    # meta / description text (unselected)
-_PT_META_SEL_FG   = "#90c0d0"    # meta / description text (selected)
-_PT_SCROLLBAR_BG  = "#0d1b2a"    # scrollbar track
-_PT_SCROLLBAR_BTN = "#004060"    # scrollbar button
-_PT_CMD_COLOR     = "ansicyan"   # /command text in the input line (bold makes it pop)
+_PT_PROMPT_COLOR  = "#ffff00"  # "gurrt" name in the prompt line — bright yellow
+_PT_ARROW_COLOR   = "#ffff00"  # "❯" arrow — matches prompt name
+_PT_DOT_ON        = "ansigreen" # ● indicator when a video is indexed
+_PT_DOT_OFF       = "ansigray"  # ○ indicator when nothing is indexed
+_PT_POPUP_BG      = "#00003a"   # completion popup background — dark blue
+_PT_POPUP_SEL_BG  = "#0000aa"   # selected entry background — classic blue
+_PT_POPUP_FG      = "#c8c800"   # unselected entry foreground — muted yellow
+_PT_POPUP_SEL_FG  = "#ffff00"   # selected entry foreground — bright yellow
+_PT_META_FG       = "#444488"   # meta / description text (unselected) — muted blue
+_PT_META_SEL_FG   = "#8888ff"   # meta / description text (selected) — light blue
+_PT_SCROLLBAR_BG  = "#00003a"   # scrollbar track — dark blue
+_PT_SCROLLBAR_BTN = "#0000aa"   # scrollbar button — classic blue
+_PT_CMD_COLOR     = "ansiyellow" # /command text in the input line
 _PT_ARGS_COLOR    = "ansiwhite"  # arguments typed after the command
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -123,7 +123,7 @@ _BANNER = r"""
 
 def show_banner() -> None:
     console.print(Text(_BANNER, style=f"bold {C_ACCENT}"))
-    console.print(Text("  gUrrT · Video RAG CLI", style=f"dim {BORDER_PRIMARY}"))
+    console.print(Text("  gUrrT · Video RAG CLI", style=f"#ff9900"))
     console.print(Rule(style=BORDER_PRIMARY))
 
 
