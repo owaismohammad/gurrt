@@ -15,3 +15,11 @@ experiment/
 trash/
 uv.lock
 .python-version
+
+llama-server.exe
+experiment/
+data/
+bin/
+models/
+captioned_nodes_debug.json
+REFACTOR_SESSION.md

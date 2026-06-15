@@ -1,4 +1,5 @@
 import chromadb
+from gurrt.cli import ui
 
 class VectorDB:
     def __init__(self, db_path:str, reset: bool = False):
@@ -47,7 +48,7 @@ class VectorDB:
         try:
             self.client.delete_collection("frame_embedding_collection")
             self.client.delete_collection("asr_collection")
-            print("\033[1;32mRefreshing Collection\033[0m")
-        except:
-            print("\033[1;32mInitializing New Collection\033[0m")
+            ui.info("Vector database reset")
+        except Exception:
+            pass
         

@@ -2,39 +2,17 @@ from pathlib import Path
 import numpy as np
 from typing import Dict, Any
 from ollama import chat
-# import moviepy.editor as mp
-from sentence_transformers import CrossEncoder
 import torch
 import cv2
 from io import BytesIO
-from tqdm import tqdm
 from PIL import Image
 import subprocess
-import imageio_ffmpeg  
-
-# import imagehash
-# from scenedetect import open_video, SceneManager
-# from scenedetect.detectors import ContentDetector
+import imageio_ffmpeg
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-
 from gurrt.config.config import Settings
-
-
-
-
-# def audio_extraction(path: Path):
-#     settings = Settings()
-#     audio_file = settings.AUDIO_PATH
-#     video = mp.VideoFileClip(path)
-#     audio = video.audio
-#     audio.write_audiofile(audio_file)
-    
-#     audio.close()
-#     video.close()
-#     return audio_file
-
-def audio_extraction(path: Path):
-    settings = Settings()
+from gurrt.core.prompts import VLM_PROMPT
+from gurrt.cli import ui
+def audio_extraction(path: Path, settings: Settings):
     audio_file = settings.AUDIO_PATH
     ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
     subprocess.run([
@@ -46,13 +24,8 @@ def audio_extraction(path: Path):
     return audio_file
 
 def audio_to_text(audio_path, model, beam_size : int = 5) -> str:
-    # segments, info = model.transcribe(audio_path, beam_size= beam_size, vad_filter = True)
     segments, info = model.transcribe(audio_path, batch_size=8, vad_filter=True)
     segments = list(segments)
-    # text = ""
-    # for segment in segments:
-    #     text += segments.text
-    # return text
     text = "".join(segment.text for segment in segments)
     return text
 def chunk_text(text):
@@ -63,55 +36,56 @@ def chunk_text(text):
     chunked_text = text_splitter.split_text(text=text)
     return chunked_text
 
-def scene_split(video_path):
-    print("--- Detecting shot boundaries with PySceneDetect ---")
-    video = open_video(video_path)
-    scene_manager = SceneManager()
-    scene_manager.add_detector(ContentDetector())
-
-    try:
-        scene_manager.detect_scenes(video, show_progress=True)
-        scene_list = scene_manager.get_scene_list()
-    except Exception as e:
-        print("Scene detection failed:", e)
-        scene_list = []
-    return scene_list
-
-def frame_listing_uniform(video_path: Path):
-    cap= cv2.VideoCapture(video_path)
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    
-    frame_idx = range(0, total_frames, int(fps))
-
-    frame_PIL = []
-    timestamps_list = []
-    ids = []
-    with tqdm(total = len(frame_idx), desc="\033[1;32mProcessing frames...\033[0m") as pbar: 
-        for frame_no in frame_idx:
-            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_no)
-            ret, frame = cap.read()
-            if not ret:
-                continue
-            timestamp_sec = cap.get(cv2.CAP_PROP_POS_MSEC) 
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            
-            image = Image.fromarray(frame)
-            frame_id = f"{video_path}:{timestamp_sec}:Uniform"
-            
-            frame_PIL.append(image)
-            timestamps_list.append(timestamp_sec)
-            ids.append(frame_id)
-            pbar.update(1)
-        cap.release()
-    return frame_PIL, timestamps_list, ids, fps
-
 def generate_captions_in_batches(batch_of_frames, 
                                  clip_model, 
                                  clip_processor, 
-                                 blip_model, 
-                                 blip_processor, 
+                                 smol_model,
+                                 smol_processor, 
                                  device):
+    clip_inputs = clip_processor(images=batch_of_frames, return_tensors="pt").to(device)
+    messages_batch = [
+        [{"role": "user","content": [{"type": "image"},{"type": "text", 
+        "text": VLM_PROMPT}]}]
+    for _ in batch_of_frames]
+    prompts = [
+        smol_processor.apply_chat_template(m, add_generation_prompt=True)
+        for m in messages_batch
+    ]
+    smol_inputs = smol_processor(
+        text=prompts,
+        images=[[image] for image in batch_of_frames],
+        return_tensors="pt",
+        padding=True,
+    ).to(device)
+    with torch.no_grad():
+        clip_outputs = clip_model.get_image_features(clip_inputs.pixel_values)
+        clip_outputs = clip_outputs.pooler_output
+        clip_embeddings = clip_outputs / clip_outputs.norm(p=2, dim=-1, keepdim=True)
+        smol_output_ids = smol_model.generate(
+                **smol_inputs,
+                max_new_tokens=200  ,
+                do_sample=False,
+            )
+        captions = smol_processor.batch_decode(smol_output_ids, skip_special_tokens = True)
+    input_len = smol_inputs["input_ids"].shape[1]
+    captions = [
+        smol_processor.decode(smol_output_ids[i, input_len:], skip_special_tokens=True)
+        for i in range(len(batch_of_frames))
+    ]
+    embeddings_list = clip_embeddings.cpu().numpy().tolist()
+    if device == "cuda":
+        del clip_inputs
+        del smol_inputs
+        del clip_embeddings
+        del smol_output_ids
+
+    return captions, embeddings_list
+def generate_captions_in_batches_blip(batch_of_frames, 
+                                clip_model, 
+                                clip_processor, 
+                                blip_model, 
+                                blip_processor,
+                                device):
     clip_inputs = clip_processor(images=batch_of_frames, return_tensors="pt").to(device)
     blip_inputs = blip_processor(images = batch_of_frames, return_tensors = 'pt').to(device)
     with torch.no_grad():
@@ -128,7 +102,7 @@ def generate_captions_in_batches(batch_of_frames,
                                         num_beams = 3,
                                         )
         captions = blip_processor.batch_decode(blip_output_ids, skip_special_tokens=True)
-
+            
     embeddings_list = clip_embeddings.cpu().numpy().tolist()
     if device == "cuda":
         del clip_inputs
@@ -136,65 +110,58 @@ def generate_captions_in_batches(batch_of_frames,
         del clip_embeddings
         del blip_output_ids
 
-        torch.cuda.empty_cache()
-        torch.cuda.ipc_collect()
-   
-
     return captions, embeddings_list
 
-def frame_listing(scene_list, video_path: Path):
-    cap = cv2.VideoCapture(video_path)
-    fps = cap.get(cv2.CAP_PROP_FPS)   
-    ids = []
-    frame_PIL = []
-    timestamps_list = []
-    
-    with tqdm(total = len(scene_list), desc="\033[1;32mProcessing frames...\033[0m") as pbar: 
-        for i, scene in enumerate(scene_list):
-            start_time, end_time = scene[0].get_seconds(), scene[1].get_seconds()
-            mid_time = (start_time + end_time) / 2
-            timestamps = [start_time, mid_time, end_time]
-            labels = ["initial", "middle", "final"]
-            
-            for t, label in zip(timestamps, labels):
-                cap.set(cv2.CAP_PROP_POS_MSEC, t * 1000)
-                ret, frame = cap.read()
-                
-                if ret:
-                    img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                    image = Image.fromarray(img_rgb)
-                    frame_PIL.append(image)
-                    timestamps_list.append(t)
-                    frame_id = f"{video_path}:{t}:{label}"
-                    ids.append(frame_id)
-            pbar.update(1)
-    return frame_PIL, timestamps_list, ids, fps
-
 def batched_captioning(frame_list: list,
-                       batch_size: int,
-                       clip_model,
-                       clip_processor,
-                       blip_model,
-                       blip_processor,
-                       device):
+                    batch_size: int,
+                    clip_model,
+                    clip_processor,
+                    smol_model,
+                    smol_processor,
+                    device):
     caption_list = []
     embedding_list = []
-    
-    with tqdm(total = (len(frame_list) + batch_size -1 ) // batch_size,
-              desc = "\033[1;32mAnalyzing video visuals...\033[0m") as pbar:
-        for i in range(0, len(frame_list),batch_size):
-            batch = frame_list[i:i+batch_size]
-            caption , embedding = generate_captions_in_batches(batch, 
-                                                            clip_model= clip_model,
-                                                            clip_processor= clip_processor,
-                                                            blip_model= blip_model,
-                                                            blip_processor= blip_processor,
-                                                            device= device)
+    total_batches = (len(frame_list) + batch_size - 1) // batch_size
+    with ui.make_progress() as progress:
+        task_id = progress.add_task("  Analyzing frames", total=total_batches)
+        for i in range(0, len(frame_list), batch_size):
+            batch = frame_list[i:i + batch_size]
+            caption, embedding = generate_captions_in_batches(batch,
+                                                              clip_model=clip_model,
+                                                              clip_processor=clip_processor,
+                                                              smol_model=smol_model,
+                                                              smol_processor=smol_processor,
+                                                              device=device)
             caption_list.extend(caption)
             embedding_list.extend(embedding)
-            pbar.update(1)
-    return caption_list, embedding_list           
+            progress.advance(task_id)
+    return caption_list, embedding_list
 
+
+def batched_captioning_blip(frame_list: list,
+                    batch_size: int,
+                    clip_model,
+                    clip_processor,
+                    blip_model,
+                    blip_processor,
+                    device):
+    caption_list = []
+    embedding_list = []
+    total_batches = (len(frame_list) + batch_size - 1) // batch_size
+    with ui.make_progress() as progress:
+        task_id = progress.add_task("  Analyzing frames", total=total_batches)
+        for i in range(0, len(frame_list), batch_size):
+            batch = frame_list[i:i + batch_size]
+            caption, embedding = generate_captions_in_batches_blip(batch,
+                                                                   clip_model=clip_model,
+                                                                   clip_processor=clip_processor,
+                                                                   blip_model=blip_model,
+                                                                   blip_processor=blip_processor,
+                                                                   device=device)
+            caption_list.extend(caption)
+            embedding_list.extend(embedding)
+            progress.advance(task_id)
+    return caption_list, embedding_list
 
 def caption_frame_collection(results_reranked: Dict[str, Any]) -> list:
     caption_list = []
@@ -213,34 +180,31 @@ def generate_caption(frame,buffer, model: str):
     messages=[
         {
     "role": "system",
-    "content": "You are a helpful assistant that can analyze images and provide captions."
+    "content": VLM_PROMPT
     },
 
     {
         'role': 'user',
-        'content': 'What is in this image? .',
+        'content': '',
         'images': [img_bytes],
     }
     ],
+    options={
+            "num_predict": 200  
+        }
     )
-
     return response.message.content
 
-
-
 def rerank(query: str,
-           results,
-        #    MODEL_DIR:str,
-        #    device,
-           reranker_model,
-           top_k: int = 10) -> Dict[str, Any]:
+        results,
+        reranker_model,
+        top_k: int = 10) -> Dict[str, Any]:
     """
     Performs 'Rank CoT' retrieval:
     1. Takes initial results from ChromaDB.
     2. Reranks them using the CrossEncoder.
     3. Returns the top_k most relevant results.
     """
-    # reranker_model = CrossEncoder(f"{MODEL_DIR}/reranker_model", device=device) 
     if not results['documents'][0]:
         return results
     captions = []
@@ -276,8 +240,6 @@ def rerank(query: str,
     
 def rerank_docs(query: str,
                 results,
-                # MODEL_DIR: str,
-                # device,
                 reranker_model,
                 top_k: int = 10) -> Dict[str, Any]:
     """
@@ -286,7 +248,6 @@ def rerank_docs(query: str,
     2. Reranks them using the CrossEncoder.
     3. Returns the top_k most relevant results.
     """
-    # reranker_model = CrossEncoder(f"{MODEL_DIR}/reranker_model", device=device)
     if not results['documents'][0]:
         return results
 
@@ -314,343 +275,50 @@ def rerank_docs(query: str,
         'metadatas': [final_metas],
         'distances': [final_dists]
     }    
-def uniform_frame_sampling(path: Path,
-                           clip_model,
-                           clip_processor,
-                           blip_processor,
-                           blip_model,
-                           device):
-    cap= cv2.VideoCapture(path)
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    
-    frame_idx = range(0, total_frames, int(fps))
-    # frame_no = 0
-    embeddings = []
-    metadatas = []
-    ids = []
-    # buffer = BytesIO()
-    with tqdm(total = len(frame_idx), desc="\033[1;32mProcessing frames...\033[0m") as pbar: 
-        for frame_no in frame_idx:
-        # while cap.isOpened():
-            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_no)
-            ret, frame = cap.read()
-            if not ret:
-                continue
-            # if frame_no % int(fps) == 0:
-            timestamp_sec = cap.get(cv2.CAP_PROP_POS_MSEC) 
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            image = Image.fromarray(frame)
-            inputs = clip_processor(images = image, return_tensors = 'pt').to(device)
-            # caption=generate_caption(image,buffer)
-            # print(caption)
-            blip_input = blip_processor(images = image,
-                                        text="Describe the scene in a factual, objective manner.",
-                                        return_tensors = 'pt').to(device)
-            with torch.no_grad():
-                outputs = clip_model.get_image_features(inputs.pixel_values)
-                blip_outputs = blip_model.generate(**blip_input,
-                                                #    max_length = 60,
-                                                   min_length = 15,
-                                                #    no_repeat_ngram_size=2,
-                                                   num_beams = 3,
-                                                    )
-            
-            caption = blip_processor.decode(blip_outputs[0], skip_special_tokens=True)
-            image_embedding = outputs.pooler_output
-            image_embedding = image_embedding / image_embedding.norm(dim = -1, keepdim= True)
-            image_embedding = image_embedding.squeeze(0).cpu().numpy().tolist()
-            frame_id = f"{path}:{timestamp_sec}"
-            
-            ids.append(frame_id)
-            embeddings.append(image_embedding)
 
-            metadatas.append({
-                "frame_idx": frame_no,
-                "caption": caption,
-                "timestamp_ms": timestamp_sec,
-                "fps": fps,
-                "source_path": str(path)
-            })
-            
-            # frame_no +=1
-            pbar.update(1)
-    return embeddings, metadatas, ids
-
-def uniform_frame_sampling_ollama(video_path: Path,
-                                  model_name: str,
-                                  clip_model,
-                                  clip_processor, 
-                                  device):
-    cap= cv2.VideoCapture(video_path)
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    
-    frames_idx = range(0, total_frames, int(fps))
-    
-    # frame_no = 0
+def captioning_ollama(video_path: Path,
+                                frame_PIL,
+                                timestamps_list,
+                                fps, 
+                                model_name: str,
+                                clip_model,
+                                clip_processor, 
+                                device):
     embeddings = []
     metadatas = []
     ids = []
     
-    with tqdm(total = len(frames_idx), desc="\033[1;32mProcessing frames...\033[0m") as pbar: 
-        for frame_no in frames_idx:
-        # while cap.isOpened():
-            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_no)
-            ret, frame = cap.read()
-            if not ret:
-                continue
-            # if frame_no % int(fps) == 0:
-            timestamp_sec = cap.get(cv2.CAP_PROP_POS_MSEC) 
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            image = Image.fromarray(frame)
-            inputs = clip_processor(images = image, return_tensors = 'pt').to(device)
+    with ui.make_progress() as progress:
+        task_id = progress.add_task("  Processing frames", total=len(frame_PIL))
+        for i, frame_no in enumerate(frame_PIL):
+            inputs = clip_processor(images=frame_no, return_tensors="pt").to(device)
             buffer = BytesIO()
-            caption=generate_caption(image,buffer, model_name)
-            
+            caption = generate_caption(frame_no, buffer, model_name)
+
             with torch.no_grad():
                 outputs = clip_model.get_image_features(inputs.pixel_values)
             image_embedding = outputs.pooler_output
-            image_embedding = image_embedding / image_embedding.norm(dim = -1, keepdim= True)
+            image_embedding = image_embedding / image_embedding.norm(dim=-1, keepdim=True)
             image_embedding = image_embedding.squeeze(0).cpu().numpy().tolist()
-            frame_id = f"{video_path}:{timestamp_sec}"
-            
+            frame_id = f"{video_path}:{timestamps_list[i]}"
+
             ids.append(frame_id)
             embeddings.append(image_embedding)
-
             metadatas.append({
-                "frame_idx": frame_no,
                 "caption": caption,
-                "timestamp_ms": timestamp_sec,
+                "timestamp_ms": timestamps_list[i],
                 "fps": fps,
-                "source_path": str(video_path)
+                "source_path": str(video_path),
             })
-            
-            # frame_no +=1
-            pbar.update(1)
+            progress.advance(task_id)
     return embeddings, metadatas, ids
-def detect_scenes(video_path,
-                  scene_list,
-                  clip_processor,
-                  clip_model,
-                  model,
-                  device):
-    cap = cv2.VideoCapture(video_path)   
-    embeddings = []
-    metadatas = []
-    ids = []
-    
-    with tqdm(total = len(scene_list), desc = "Processing frames") as pbar:
-        for i, scene in enumerate(scene_list):
-            start_time, end_time = scene[0].get_seconds(), scene[1].get_seconds()
-            mid_time = (start_time + end_time) / 2
-            timestamps = mid_time
-            labels = "middle"
-            
-            buffer = BytesIO()
-            cap.set(cv2.CAP_PROP_POS_MSEC, timestamps * 1000)
-            ret, frame = cap.read()
-            
-            if ret:
-                img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                image = Image.fromarray(img_rgb)
-                caption=generate_caption(buffer=buffer,
-                                         frame = image,
-                                         model = model)
-                inputs = clip_processor(images = image, return_tensors = 'pt').to(device)
-                with torch.no_grad():
-                    outputs =clip_model.get_image_features(inputs.pixel_values)
-                image_embedding = outputs.pooler_output
-                image_embedding = image_embedding / image_embedding.norm(dim = -1, keepdim= True)
-                image_embedding = image_embedding.squeeze(0).cpu().numpy().tolist()
-                timestamp_sec = timestamps*1000
-                frame_id = f"{video_path}:{timestamp_sec}"
-            
-                ids.append(frame_id)
-                embeddings.append(image_embedding)
-
-                metadatas.append({
-                    "frame_idx": f"frame_no_{i}_{labels}",
-                    "caption": caption,
-                    "timestamp_ms": timestamp_sec,
-                    "source_path": str(video_path)
-                })
-            pbar.update(1)
-               
-    return embeddings, metadatas, ids
-
-# Temporal Filtering with adaptive sampling and opening the video at full res -> 9x8 -> gray -> hash calc -> no video reseek
-# def temporal_persistence_filter(video_path: Path,
-#                                 fps_selected: int = 2,
-#                                 hash_threshold : int = 12,
-#                                 persistence_window_sec : float = 5.0,
-#                                 vote_ratio : float = 0.6,
-#                                 max_interval_sec: float = 60.0,
-#                                 stable_fps: float = 0.5,
-#                                 min_interval_sec: float = 2.0):
-#     """
-#     Pass 2 — Persistence State Machine + Pass 3 — Re-read selected frames.
-
-#     The state machine has three states:
-
-#         STABLE:
-#             Watching for a hash spike. Every frame is compared to
-#             reference_hash (the last known stable slide state).
-#             If Hamming distance > hash_threshold → move to CANDIDATE.
-
-#         CANDIDATE:
-#             A spike was detected. We don't trust it yet.
-#             Collect distances for the next persistence_window_sec seconds.
-#             Two outcomes after the window expires:
-
-#               CONFIRMED  (>= vote_ratio of window frames still above threshold)
-#                 → Real slide change. Select the candidate frame.
-#                 → Update reference_hash to current hash (stable new state).
-
-#               FALSE POSITIVE (majority of frames returned below threshold)
-#                 → Speaker moved and walked back. Discard silently.
-#                 → Keep old reference_hash.
-
-#     Why this filters the speaker:
-#         Speaker walks in front of slide → hash spikes → speaker walks away
-#         → within the window, frames return below threshold → vote fails → discarded.
-
-#         New slide appears → hash spikes → ALL subsequent frames in window
-#         also show high distance (slide is still there) → vote passes → selected.
-
-#     Parameters:
-#         hash_threshold        : Hamming distance to consider "changed" (0=identical, 64=totally different)
-#         fps_selected          : frames per second to sample from the video
-#         persistence_window_sec: how long a change must persist before it's trusted
-#         vote_ratio            : fraction of window frames that must stay above threshold
-#         min_interval_sec      : minimum gap between two selected frames
-#         max_interval_sec      : if no change detected for this long, force-select a frame
-
-#     Returns:
-#         frame_PIL   : list of PIL images (confirmed frames only)
-#         timestamps  : list of timestamp_sec for each selected frame
-#         ids         : list of unique frame ID strings
-#         fps         : video frame rate
-#     """
-#     # cv2 used only for a one-time header read — no frame decoding
-#     cap = cv2.VideoCapture(str(video_path))
-#     fps = int(cap.get(cv2.CAP_PROP_FPS))
-#     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-#     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-#     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-#     cap.release()
-
-#     frame_size = width * height * 3          # bgr24: 3 bytes per pixel
-#     n_sampled = max(1, int((total_frames / fps) * fps_selected))
-#     stable_step = max(1, int(fps_selected/stable_fps))
-#     ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
-#     proc = subprocess.Popen(
-#         [
-#             ffmpeg_exe,
-#             "-threads", "0",
-#             "-skip_frame", "noref",
-#             "-i", str(video_path),
-#             "-vf", f"fps={fps_selected}",
-#             "-f", "rawvideo", "-pix_fmt", "bgr24",
-#             "pipe:1"
-#         ],
-#         stdout=subprocess.PIPE,
-#         stderr=subprocess.DEVNULL
-#     )
-
-#     STABLE, CANDIDATE = "STABLE", "CANDIDATE"
-#     state = STABLE
-#     ref_hash = None
-#     candidate = None          # (frame_index, timestamp, hash_bits, raw_bgr copy)
-#     window_start = None
-#     last_selected_sec = None
-#     window_distances = []
-#     selected_frames = []      # (timestamp, raw_bgr copy)
-
-#     frame_index = 0
-
-#     with tqdm(total=n_sampled, desc="\033[1;32mTemporal Persistence Filtering Frames...\033[0m") as pbar:
-#         while True:
-#             raw = proc.stdout.read(frame_size)
-#             if len(raw) < frame_size:
-#                 break
-
-#             # read-only view — no copy until we actually need to store the frame
-#             frame_view = np.frombuffer(raw, dtype=np.uint8).reshape(height, width, 3)
-#             timestamp = frame_index / fps_selected
-#             frame_index += 1
-
-#             gray = cv2.cvtColor(frame_view, cv2.COLOR_BGR2GRAY)
-#             small = cv2.resize(gray, (9, 8), interpolation=cv2.INTER_AREA)
-#             current_hash = (small[:, 1:] > small[:, :-1]).flatten()
-
-#             if ref_hash is None:
-#                 ref_hash = current_hash
-#                 last_selected_sec = timestamp
-#                 pbar.update(1)
-#                 continue
-#             if state == STABLE and (frame_index % stable_step) != 0:
-#                 pbar.update(1)
-#                 continue
-#             # if timestamp - last_selected_sec > max_interval_sec:
-#             #     selected_frames.append((timestamp, frame_view.copy()))
-#             #     ref_hash = current_hash
-#             #     last_selected_sec = timestamp
-#             #     state = STABLE
-#             #     window_distances = []
-#             #     candidate = None
-#             #     pbar.update(1)
-#             #     continue
-
-#             distance = int(np.count_nonzero(current_hash ^ ref_hash))
-
-#             if state == STABLE:
-#                 if distance > hash_threshold:
-#                     state = CANDIDATE
-#                     candidate = (frame_index - 1, timestamp, current_hash, frame_view.copy())
-#                     window_start = timestamp
-#                     window_distances = [distance]
-
-#             elif state == CANDIDATE:
-#                 window_distances.append(distance)
-#                 elapsed_time = timestamp - window_start
-#                 if elapsed_time >= persistence_window_sec:
-#                     ratio = sum(d > hash_threshold for d in window_distances) / len(window_distances)
-#                     time_ok = candidate[1] - last_selected_sec >= min_interval_sec
-#                     if ratio > vote_ratio and time_ok:
-#                         _, cand_ts, cand_hash, cand_raw = candidate
-#                         selected_frames.append((cand_ts, cand_raw))
-#                         ref_hash = cand_hash
-#                         last_selected_sec = cand_ts
-#                     state = STABLE
-#                     candidate = None
-#                     window_distances = []
-
-#             pbar.update(1)
-
-#     proc.stdout.close()
-#     proc.wait()
-
-#     timestamp_sec = [f[0] for f in selected_frames]
-#     ids = [f"{video_path}:{t}:Persistence_Filter" for t in timestamp_sec]
-#     frame_PIL = [
-#         Image.fromarray(cv2.cvtColor(raw, cv2.COLOR_BGR2RGB))
-#         for _, raw in selected_frames
-#     ]
-#     print(f"\033[1;32mTotal sampled frames selected: {len(selected_frames)}\033[0m")
-#     print(f"\033[1;32mTotal frames : {total_frames}\033[0m")
-#     return frame_PIL, timestamp_sec, ids, fps
-
-
-# Temporal Filtering with adaptive sampling and opening the video at 9x8 gray res/  video reseek
-
+  
 def temporal_persistence_filter(video_path: Path,
                                 fps_selected: int = 2,
                                 stable_fps: float = 0.5,
                                 hash_threshold: int = 12,
                                 persistence_window_sec: float = 5.0,
                                 vote_ratio: float = 0.6,
-                                max_interval_sec: float = 60.0,
                                 min_interval_sec: float = 2.0):
     """
     Two-pass pipeline:
@@ -702,12 +370,9 @@ def temporal_persistence_filter(video_path: Path,
 
     duration_sec = total_frames / fps
     n_sampled = max(1, int(duration_sec * fps_selected))
-
     stable_step = max(1, round(fps_selected / stable_fps))
-
     HASH_W, HASH_H = 9, 8
     HASH_FRAME_SIZE = HASH_W * HASH_H 
-
     ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
     proc = subprocess.Popen(
         [
@@ -722,19 +387,18 @@ def temporal_persistence_filter(video_path: Path,
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL
     )
-
     STABLE, CANDIDATE = "STABLE", "CANDIDATE"
     state = STABLE
     ref_hash = None
-    candidate = None       # (timestamp, hash_bits) — no raw frame stored
+    candidate = None       
     window_start = None
     last_selected_sec = None
+    
     window_distances = []
     confirmed_timestamps = []
-
     frame_index = 0
-
-    with tqdm(total=n_sampled, desc="\033[1;32mTemporal Persistence Filtering Frames...\033[0m") as pbar:
+    with ui.make_progress() as progress:
+        task_id = progress.add_task("  Scanning video", total=n_sampled)
         while True:
             raw = proc.stdout.read(HASH_FRAME_SIZE)
             if len(raw) < HASH_FRAME_SIZE:
@@ -742,30 +406,17 @@ def temporal_persistence_filter(video_path: Path,
 
             timestamp = frame_index / fps_selected
             frame_index += 1
-            pbar.update(1)
-
-            
-
+            progress.advance(task_id)
             small = np.frombuffer(raw, dtype=np.uint8).reshape(HASH_H, HASH_W)
             current_hash = (small[:, 1:] > small[:, :-1]).flatten()
-
             if ref_hash is None:
                 ref_hash = current_hash
                 last_selected_sec = timestamp
                 continue
             if state == STABLE and (frame_index % stable_step) != 0:
                 continue
-            # if timestamp - last_selected_sec > max_interval_sec:
-            #     confirmed_timestamps.append(timestamp)
-            #     ref_hash = current_hash
-            #     last_selected_sec = timestamp
-            #     state = STABLE
-            #     window_distances = []
-            #     candidate = None
-            #     continue
-
             distance = int(np.count_nonzero(current_hash ^ ref_hash))
-
+            
             if state == STABLE:
                 if distance > hash_threshold:
                     state = CANDIDATE
@@ -787,26 +438,21 @@ def temporal_persistence_filter(video_path: Path,
                     state = STABLE
                     candidate = None
                     window_distances = []
-
     proc.stdout.close()
     proc.wait()
 
-    # Pass 2: targeted full-res seek for each confirmed timestamp only
     cap = cv2.VideoCapture(str(video_path))
     frame_PIL = []
     valid_timestamps = []
-
     for ts in confirmed_timestamps:
         cap.set(cv2.CAP_PROP_POS_MSEC, ts * 1000)
         ret, frame = cap.read()
         if ret:
-            frame_PIL.append(Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)))
+            frame_PIL.append(Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)).resize((512, 512), Image.Resampling.BICUBIC))
             valid_timestamps.append(ts)
     cap.release()
-
     ids = [f"{video_path}:{t}:Persistence_Filter" for t in valid_timestamps]
-    print(f"\033[1;32mTotal slides selected: {len(frame_PIL)}\033[0m")
-    print(f"\033[1;32mTotal frames : {total_frames}\033[0m")
+    ui.info(f"Selected {len(frame_PIL)} keyframes from {total_frames} total frames")
     return frame_PIL, valid_timestamps, ids, fps
 
    

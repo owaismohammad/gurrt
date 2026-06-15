@@ -4,63 +4,53 @@ from gurrt.core.vectordb import VectorDB
 import torch
 
 class SearchService:
-    def __init__(self, clip_model, clip_processor, reranker, vectordb: VectorDB, settings: Settings):
-        
+    def __init__(self,
+                clip_model,
+                clip_processor,
+                reranker,
+                vectordb: VectorDB,
+                settings: Settings):
         self.model = clip_model
         self.processor = clip_processor
         self.reranker = reranker
         
         self.settings = settings
         self.cache_dir = self.settings.MODEL_CACHE_DIR
-        # self.db = VectorDB(str(self.settings.CHROMA_DB_PATH))
         self.db = vectordb
-        
-    def _embed_text(self, query,
+
+    def _embed_text(self,
+                    query,
                     device):
         text_embedding  = self.processor(text = [query], return_tensors = 'pt').to(device)
     
         with torch.no_grad():
             output = self.model.get_text_features(**text_embedding)
-
         text_features = output.pooler_output
         text_features = text_features / text_features.norm(dim=-1, keepdim=True)
         text_features = text_features.cpu().numpy()[0]  # shape (512,)
-        
         return text_features
+
     def query_collection(self,
-                         device,
-                         query: str,
-                         n_results: int = 10
-                         ):
-        
+                        device,
+                        query: str,
+                        n_results: int = 10
+                        ):
         self.text_features = self._embed_text(query=query,
-                                              device = device)
-        
-        results = self.db.search_frame(
-        query_embedding= self.text_features,
-        n_results= n_results
-    )   
-        results_audio =self.db.search_audio(
-        query_embedding= self.text_features,
-        n_results= n_results
-    )   
-        
+                                            device = device)
+        results = self.db.search_frame(query_embedding= self.text_features,
+                                        n_results= n_results)
+        results_audio =self.db.search_audio(query_embedding= self.text_features,
+                                            n_results= n_results)   
         results_reranked = rerank(query,
-                                  results, 
-                                #   str(self.cache_dir),
-                                #   device,
+                                results, 
                                 self.reranker,
                                 n_results)
         results_reranked_audio = rerank_docs(query,
-                                             results_audio,
-                                            #  str(self.cache_dir),
-                                            #  device,
+                                            results_audio,
                                             self.reranker,
                                             n_results)
-        
         captions_list = caption_frame_collection(results_reranked)
         asr_list = results_reranked_audio["documents"][0]
-        
         return captions_list, asr_list
 
 

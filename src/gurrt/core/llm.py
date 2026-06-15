@@ -17,38 +17,12 @@ class LLMService:
                         query:str,
                         caption_list: list,
                         asr_list: list) -> str:
-        
         context_caption = "\n".join(caption_list)
         asr_text = "\n".join(asr_list)
-        
-        # self.client_memory.add(
-        #     content = context_caption,
-        #     container_tags = ["Frame_Captions"],
-        #     metadata = {
-        #         "note_id": "Retrieved Frames"
-        #     }
-        # )
-        # self.client_memory.add(
-        #     content = asr_text,
-        #     container_tags = ["Audio_Captions"],
-        #     metadata = {
-        #         "note_id": "Retrieved Audio"
-        #     }
-        # )
-        # context_frame = self.client_memory.search.documents(
-        #     q= query,
-        #     container_tags = ["Frame_Captions"],
-        #     limit = 9
-        # )
-        # context_audio = self.client_memory.search.documents(
-        #     q= query,
-        #     container_tags = ["Audio_Captions"],
-        #     limit = 9
-        # )
         chat_context = self.client_memory.search.documents(
             q= query,
             container_tags = ["Previous_Chat"],
-            limit = 3
+            limit = 1
         )
         parser = StrOutputParser()
         prompt = PromptTemplate(
@@ -62,7 +36,6 @@ class LLMService:
             "previous_chat": chat_context,
             "query" : query
         })
-        
         context = f"{query}\n\n\n{result}"
         self.client_memory.add(
             content = context,
@@ -74,10 +47,6 @@ class LLMService:
         return result
 
     def delete(self) -> dict:
-        # frames_deleted = self.client_memory.documents.delete_bulk(container_tags=["Frame_Captions"])
-        # audio_deleted = self.client_memory.documents.delete_bulk(container_tags=["Audio_Captions"])
-        # return {"frames_deleted": frames_deleted,
-        #         "audio_deleted": audio_deleted}
         chat_deleted = self.client_memory.documents.delete_bulk(container_tags=["Previous_Chat"])
         return {"chat_deleted": chat_deleted}
 

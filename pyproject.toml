@@ -1,6 +1,6 @@
 [project]
 name = "gurrt"
-version = "1.0.5"
+version = "2.0.0"
 description = "An Intelligent Open-Source Video Understanding System A different path from traditional Large Video Language Models (LVLMs). Built for modularity, openness, and real-world usability."
 authors = [
     {name="Mohammad Owais", email = "owaismohammad2515@gmail.com"},
@@ -13,7 +13,6 @@ classifiers = [
     "Programming Language :: Python :: 3.12"
 ]
 dependencies = [
-    "opencv-python>=4.13.0.92",
     "transformers>=5.1.0",
     "accelerate>=1.12.0",
     "pillow>=12.1.0",
@@ -21,11 +20,8 @@ dependencies = [
     "ollama>=0.6.1",
     "langchain>=1.2.9",
     "langchain-groq>=1.1.2",
-    "moviepy>=1.0.3",
     "sentence-transformers>=5.2.2",
     "tqdm>=4.67.3",
-    "scenedetect>=0.6.7.1",
-    "scikit-image>=0.26.0",
     "faster-whisper>=1.2.1",
     "langchain-text-splitters>=1.1.0",
     "fastapi>=0.128.7",
@@ -34,19 +30,18 @@ dependencies = [
     "platformdirs>=4.5.1",
     "typer>=0.21.1",
     "opencv-python-headless>=4.13.0.92",
-    "imagehash>=4.3.2",
     "imageio-ffmpeg>=0.6.0",
-]
-[project.optional-dependencies]
-cuda = [
+    "aiohttp>=3.14.1",
+    "num2words>=0.5.14",
+    "prompt_toolkit>=3.0.0",
     "torch",
     "torchvision",
     "torchaudio",
 ]
+
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
-
 
 [[tool.uv.index]]
 name = "pytorch-cu121"
