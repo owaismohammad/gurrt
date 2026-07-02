@@ -1,4 +1,5 @@
 import torch
+import sys
 from transformers import  (
     CLIPProcessor,
     CLIPModel,
@@ -79,7 +80,15 @@ class ModelManager:
 
         self._smol = SmolVLMForConditionalGeneration.from_pretrained(path,
                                                                     local_files_only= True)
-        self._smol = torch.compile(self._smol, mode="reduce-overhead")
+        ## torch.compile works with Triton, which is not on Windows, so this one
+        # line crashes the very first index. Only run it when we're on a CUDA GPU
+        # and not on Windows — and if the compile still chokes, just skip it instead
+        # of taking  whole run down with it.
+        if self.device == "cuda" and sys.platform != "win32":
+            try:
+                self._smol = torch.compile(self._smol, mode="reduce-overhead")
+            except Exception as e:
+                ui.warn(f"torch.compile unavailable -- continuing without it ({e})")
         return self._to_device(self._smol), self._smol_processor
 
     def release_smol(self):
