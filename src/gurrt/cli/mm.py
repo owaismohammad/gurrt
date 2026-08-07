@@ -3,7 +3,6 @@ import logging
 import time
 import zipfile
 import subprocess
-import shutil
 import urllib.request
 from pathlib import Path
 from typing import Optional
@@ -22,6 +21,7 @@ import asyncio
 from gurrt.core.pipeline import VideoRag
 from gurrt.config.config import LlamaServerManager
 from gurrt.utils.llama_server_utils import download_gemma3_models
+from gurrt.utils.downloads import stream_download
 from rich.panel import Panel
 from rich.prompt import Prompt
 from rich.table import Table
@@ -183,11 +183,9 @@ def _do_init_llama() -> None:
                     break
 
         zip_path = config_dir / "temp_server.zip"
-        ui.step(f"Downloading {download_url.split('/')[-1]}...")
-
-        req_dl = urllib.request.Request(download_url, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req_dl) as response, open(zip_path, "wb") as out_file:
-            shutil.copyfileobj(response, out_file)
+        stream_download(download_url, zip_path,
+                        f"  {download_url.split('/')[-1]}",
+                        headers={"User-Agent": "Mozilla/5.0"})
 
         with zipfile.ZipFile(zip_path, "r") as zip_ref:
             extracted_count = 0

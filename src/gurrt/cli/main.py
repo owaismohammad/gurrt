@@ -3,7 +3,6 @@ import logging
 import time
 import zipfile
 import subprocess
-import shutil
 import urllib.request
 from pathlib import Path
 from typing import Optional
@@ -22,6 +21,7 @@ import asyncio
 from gurrt.core.pipeline import VideoRag
 from gurrt.config.config import LlamaServerManager
 from gurrt.utils.llama_server_utils import download_gemma3_models
+from gurrt.utils.downloads import stream_download
 from rich.panel import Panel
 from rich.prompt import Prompt
 from rich.table import Table
@@ -401,8 +401,8 @@ def _do_init_llama() -> None:
 
     if not llama_server_manager.llm_path.exists() or not llama_server_manager.mmproj_path.exists():
         try:
-            with console.status("[info]Downloading Gemma 3 model weights...[/info]", spinner="dots"):
-                download_gemma3_models(llama_server_manager.models_dir)
+            ui.step("Downloading Gemma 3 model weights...")
+            download_gemma3_models(llama_server_manager.models_dir)
         except Exception as e:
             console.print(Panel(
                 f"[error]{e}[/error]",
@@ -441,10 +441,8 @@ def _do_init_llama() -> None:
         zip_path = config_dir / "temp_server.zip"
         filename = download_url.split('/')[-1]
 
-        req_dl = urllib.request.Request(download_url, headers={"User-Agent": "Mozilla/5.0"})
-        with console.status(f"[info]Downloading {filename}...[/info]", spinner="dots"):
-            with urllib.request.urlopen(req_dl) as response, open(zip_path, "wb") as out_file:
-                shutil.copyfileobj(response, out_file)
+        stream_download(download_url, zip_path, f"  {filename}",
+                        headers={"User-Agent": "Mozilla/5.0"})
 
         with console.status("[info]Extracting server binary...[/info]", spinner="dots"):
             with zipfile.ZipFile(zip_path, "r") as zip_ref:
@@ -488,8 +486,7 @@ def _do_models_download() -> None:
     ))
     from gurrt.core.models import download_models
     try:
-        with console.status("[info]Downloading and caching models...[/info]", spinner="dots"):
-            download_models(cache_dir)
+        download_models(cache_dir)
         _save_models_done()
         ui.success(f"All models cached at {cache_dir}")
     except Exception as e:

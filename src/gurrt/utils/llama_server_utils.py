@@ -12,6 +12,7 @@ from huggingface_hub import hf_hub_download
 from gurrt.config.config import LlamaServerManager
 from gurrt.core.prompts import GEMMA_CAPTION_PROMPT
 from gurrt.cli import ui
+from gurrt.utils.downloads import watch_download, hf_file_size
 
 
 
@@ -131,14 +132,19 @@ def download_gemma3_models(models_dir: Path):
 
     for filename in files:
         target_path = models_dir / filename
-        
-        if not target_path.exists():
-            ui.step(f"Downloading {filename}...")
-            hf_hub_download(
-                repo_id=huggingface_repo,
-                filename=filename,
-                local_dir=str(models_dir),
-            )
-            ui.success(f"Downloaded {filename}")
-        else:
+
+        if target_path.exists():
             ui.info(f"{filename} already present, skipping")
+            continue
+
+        watch_download(
+            description=f"  {filename}",
+            worker=lambda f=filename: hf_hub_download(
+                repo_id=huggingface_repo,
+                filename=f,
+                local_dir=str(models_dir),
+            ),
+            watch_dir=models_dir,
+            total_bytes=hf_file_size(huggingface_repo, filename),
+        )
+        ui.success(f"Downloaded {filename}")

@@ -4,7 +4,8 @@ from rich.rule import Rule
 from rich.text import Text
 from rich.align import Align
 from rich.progress import (
-    Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn
+    Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn,
+    DownloadColumn, TransferSpeedColumn, TimeRemainingColumn
 )
 from prompt_toolkit.styles import Style as PromptStyle
 from prompt_toolkit.formatted_text import FormattedText
@@ -161,5 +162,23 @@ def make_progress() -> Progress:
         BarColumn(bar_width=None, style=BORDER_PRIMARY, complete_style=C_ACCENT),
         TextColumn("[dim]{task.percentage:>3.0f}%[/dim]"),
         TimeElapsedColumn(),
+        console=console,
+    )
+
+
+def make_download_progress() -> Progress:
+    """Progress for byte transfers: size, speed and ETA rather than a spinner.
+
+    Model weights run to gigabytes, so the useful signals are how much is
+    left and how fast it is arriving. Falls back gracefully when the total
+    size is unknown - DownloadColumn still counts bytes.
+    """
+    return Progress(
+        SpinnerColumn(style=BORDER_PRIMARY),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(bar_width=None, style=BORDER_PRIMARY, complete_style=C_ACCENT),
+        DownloadColumn(binary_units=True),
+        TransferSpeedColumn(),
+        TimeRemainingColumn(compact=True),
         console=console,
     )

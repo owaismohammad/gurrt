@@ -12,6 +12,8 @@ from huggingface_hub import snapshot_download
 
 from gurrt.config.config import Settings
 from gurrt.cli import ui
+from gurrt.utils.downloads import (watch_download, hf_cache_dir_for,
+                                   hf_repo_size)
 
 class ModelManager:
     def __init__(self, settings: Settings):
@@ -133,35 +135,63 @@ class ModelManager:
         self._text_embedder = None
         self._free_gpu()
         
-def download_models(cache_dir):
-    ui.step("Downloading CLIP...")
-    clip = CLIPModel.from_pretrained("openai/clip-vit-base-patch32", use_safetensors=True)
-    proc = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
-    clip.save_pretrained(cache_dir / "clip_model")
-    proc.save_pretrained(cache_dir / "clip_model")
+def _fetch(repo_id: str, label: str, worker, watch_dir=None):
+    """Download one model with a real byte-progress bar.
 
-    ui.step("Downloading BLIP...")
-    blip = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base", use_safetensors=True)
-    blip_proc = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
-    blip.save_pretrained(cache_dir / "blip_model")
-    blip_proc.save_pretrained(cache_dir / "blip_model")
-
-    ui.step("Downloading SmolVLM...")
-    smolVLM = SmolVLMForConditionalGeneration.from_pretrained("HuggingFaceTB/SmolVLM2-500M-Video-Instruct", use_safetensors=True)
-    smolVLM_proc = SmolVLMProcessor.from_pretrained("HuggingFaceTB/SmolVLM2-500M-Video-Instruct")
-    smolVLM.save_pretrained(cache_dir / "smolVLM_model")
-    smolVLM_proc.save_pretrained(cache_dir / "smolVLM_model")
-
-    ui.step("Downloading text embedder...")
-    text_embedder = SentenceTransformer("BAAI/bge-small-en-v1.5")
-    text_embedder.save(str(cache_dir / "text_embed_model"))
-
-    ui.step("Downloading Reranker...")
-    reranker = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
-    reranker.save(str(cache_dir / "reranker_model"))
-
-    ui.step("Downloading Faster Whisper...")
-    snapshot_download(
-        repo_id="Systran/faster-distil-whisper-large-v2",
-        local_dir=str(cache_dir / "whisper_model"),
+    huggingface_hub gives no progress callback, so the transfer runs on a
+    worker thread while we watch its cache directory fill.
+    """
+    watch_download(
+        description=f"  {label}",
+        worker=worker,
+        watch_dir=watch_dir or hf_cache_dir_for(repo_id),
+        total_bytes=hf_repo_size(repo_id),
     )
+
+
+def download_models(cache_dir):
+    clip_id = "openai/clip-vit-base-patch32"
+    blip_id = "Salesforce/blip-image-captioning-base"
+    smol_id = "HuggingFaceTB/SmolVLM2-500M-Video-Instruct"
+    embed_id = "BAAI/bge-small-en-v1.5"
+    rerank_id = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    whisper_id = "Systran/faster-distil-whisper-large-v2"
+
+    def _clip():
+        clip = CLIPModel.from_pretrained(clip_id, use_safetensors=True)
+        proc = CLIPProcessor.from_pretrained(clip_id)
+        clip.save_pretrained(cache_dir / "clip_model")
+        proc.save_pretrained(cache_dir / "clip_model")
+
+    def _blip():
+        blip = BlipForConditionalGeneration.from_pretrained(blip_id, use_safetensors=True)
+        blip_proc = BlipProcessor.from_pretrained(blip_id)
+        blip.save_pretrained(cache_dir / "blip_model")
+        blip_proc.save_pretrained(cache_dir / "blip_model")
+
+    def _smol():
+        smolVLM = SmolVLMForConditionalGeneration.from_pretrained(smol_id, use_safetensors=True)
+        smolVLM_proc = SmolVLMProcessor.from_pretrained(smol_id)
+        smolVLM.save_pretrained(cache_dir / "smolVLM_model")
+        smolVLM_proc.save_pretrained(cache_dir / "smolVLM_model")
+
+    def _embed():
+        SentenceTransformer(embed_id).save(str(cache_dir / "text_embed_model"))
+
+    def _rerank():
+        CrossEncoder(rerank_id).save(str(cache_dir / "reranker_model"))
+
+    def _whisper():
+        snapshot_download(repo_id=whisper_id,
+                          local_dir=str(cache_dir / "whisper_model"))
+
+    _fetch(clip_id, "CLIP", _clip)
+    _fetch(blip_id, "BLIP", _blip)
+    _fetch(smol_id, "SmolVLM", _smol)
+    _fetch(embed_id, "Text embedder", _embed)
+    _fetch(rerank_id, "Reranker", _rerank)
+    # snapshot_download writes straight to the target, so watch that instead
+    # of the shared cache.
+    _fetch(whisper_id, "Faster Whisper", _whisper,
+           watch_dir=cache_dir / "whisper_model")
+    ui.success("All models downloaded")
