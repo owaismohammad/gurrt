@@ -32,6 +32,16 @@ class Settings:
         self.CHAT_TOKEN_BUDGET = 600       # prior conversation
         self.WINDOW_PAD_SEC = 30.0         # context pulled either side of a hit
 
+        # BLIP and SmolVLM describe the room rather than the board: they cannot
+        # read slide text, so their captions are near-useless for lecture
+        # content. When an index was built with one of them, spend the budget
+        # on speech instead and tell the model not to trust the visuals.
+        self.LOW_FIDELITY_CAPTIONERS = {"blip2", "smolvlm"}
+        # Subtracted from frame anchors' rerank scores, so audio windows win
+        # the budget. Additive, not multiplicative: cross-encoder scores go
+        # negative, and scaling a negative score makes it bigger.
+        self.VISUAL_ANCHOR_PENALTY = 3.0
+
         self.MODEL_CACHE_DIR = home / "models"
         self.CHROMA_DB_PATH= home / "chroma_db"
         self.AUDIO_PATH = home / "output.wav"

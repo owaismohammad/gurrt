@@ -99,7 +99,7 @@ def log_transcript(settings, video_path, chunked_text, metadatas, ids) -> None:
 
 
 def log_query(settings, query, system_prompt, timeline, previous_chat,
-              rendered_human, answer) -> None:
+              rendered_human, answer, low_fidelity_visual=False) -> None:
     """Exactly what was sent to the LLM for one question, and what came back."""
     try:
         d = settings.LOGS_DIR / "queries"
@@ -120,6 +120,7 @@ def log_query(settings, query, system_prompt, timeline, previous_chat,
             "asked_at": datetime.now(timezone.utc).isoformat(),
             "query": query,
             "model": settings.LLM_MODEL,
+            "low_fidelity_visual": low_fidelity_visual,
             "budgets": {
                 "context_token_budget": settings.CONTEXT_TOKEN_BUDGET,
                 "chat_token_budget": settings.CHAT_TOKEN_BUDGET,

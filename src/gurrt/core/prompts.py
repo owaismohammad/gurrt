@@ -15,6 +15,21 @@ Rules:
 - SHOWN text is transcribed by an imperfect model. If a line reads UNREADABLE or
   is plainly garbled, do not build an answer on it."""
 
+LOW_FIDELITY_VISUAL_NOTE = """
+
+This index was built with a weak image captioner. Its SHOWN lines routinely
+describe the room, the speaker, or the general look of a slide rather than its
+content, and they cannot be relied on to have read any on-screen text correctly.
+
+For this timeline:
+- Treat SAID lines as the source of truth and build the answer from them.
+- Use a SHOWN line only as a weak hint about what was on screen, and only when
+  the surrounding speech already supports it.
+- Never quote a SHOWN line as the lecturer's wording, and never state a fact
+  that rests on a SHOWN line alone.
+- If the answer would depend on reading a slide, say the visual detail was not
+  captured rather than inventing it."""
+
 LLM_QUERY_PROMPT = """LECTURE TIMELINE:
 {timeline}
 

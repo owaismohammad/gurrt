@@ -104,20 +104,27 @@ def fetch_pool(db, lo: float, hi: float):
     return events
 
 
-def build_timeline(anchors, db, token_budget: int, pad_sec: float = 30.0):
+def build_timeline(anchors, db, token_budget: int, pad_sec: float = 30.0,
+                   visual_penalty: float = 0.0):
     """Expand anchors into windows, then fill the budget best-first.
 
     `anchors` are dicts with start_sec/end_sec/score, already reranked.
     Windows are admitted whole and in score order, so what survives the budget
     is always the most relevant material and never a sentence cut in half.
+
+    `visual_penalty` demotes frame anchors, for indexes built by a captioner
+    that cannot read slides: the budget then goes to speech instead.
     """
     windows = []
     for a in anchors:
         start = a.get("start_sec")
         if start is None:
             continue
+        score = a.get("score", 0.0)
+        if visual_penalty and a.get("kind") == "frame":
+            score -= visual_penalty
         windows.append({
-            "score": a.get("score", 0.0),
+            "score": score,
             "start": start,
             "end": a.get("end_sec") or start,
         })

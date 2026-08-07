@@ -162,7 +162,7 @@ class VideoRag:
                                 reranker= reranker,
                                 vectordb= self.vectordb,
                                 settings= self.settings)
-        timeline, used_tokens = search.build_context(
+        timeline, used_tokens, stats = search.build_context(
             self.device,
             query,
             token_budget=self.settings.CONTEXT_TOKEN_BUDGET,
@@ -171,6 +171,12 @@ class VideoRag:
             candidate_k=40)
         ui.info(f"Context: ~{used_tokens} tokens of "
                 f"{self.settings.CONTEXT_TOKEN_BUDGET} budget")
-        result = await self.llm.query_llm(query, timeline=timeline)
+        if stats["low_fidelity_visual"]:
+            ui.warn(f"Captions from {', '.join(stats['captioners'])} are "
+                    "low-fidelity — weighting the transcript instead")
+        result = await self.llm.query_llm(
+            query,
+            timeline=timeline,
+            low_fidelity_visual=stats["low_fidelity_visual"])
         self.models.release_all()
         return result

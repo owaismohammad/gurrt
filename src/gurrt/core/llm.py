@@ -1,4 +1,5 @@
-from gurrt.core.prompts import LLM_QUERY_PROMPT, LLM_SYSTEM_PROMPT
+from gurrt.core.prompts import (LLM_QUERY_PROMPT, LLM_SYSTEM_PROMPT,
+                                LOW_FIDELITY_VISUAL_NOTE)
 from gurrt.core.context import format_prior_chat
 from gurrt.core.debuglog import log_query
 
@@ -19,7 +20,8 @@ class LLMService:
 
     async def query_llm(self,
                         query:str,
-                        timeline: str) -> str:
+                        timeline: str,
+                        low_fidelity_visual: bool = False) -> str:
         chat_context = self.client_memory.search.documents(
             q= query,
             container_tags = ["Previous_Chat"],
@@ -28,12 +30,16 @@ class LLMService:
         previous_chat = format_prior_chat(
             chat_context, self.settings.CHAT_TOKEN_BUDGET)
 
+        system_prompt = LLM_SYSTEM_PROMPT
+        if low_fidelity_visual:
+            system_prompt += LOW_FIDELITY_VISUAL_NOTE
+
         parser = StrOutputParser()
         # System carries the rules, human carries the evidence, and the question
         # comes last: with a long context block, a query buried at the top gets
         # attended to far less than one at the end.
         prompt = ChatPromptTemplate.from_messages([
-            ("system", LLM_SYSTEM_PROMPT),
+            ("system", system_prompt),
             ("human", LLM_QUERY_PROMPT),
         ])
         variables = {
@@ -47,11 +53,12 @@ class LLMService:
         log_query(
             self.settings,
             query=query,
-            system_prompt=LLM_SYSTEM_PROMPT,
+            system_prompt=system_prompt,
             timeline=variables["timeline"],
             previous_chat=previous_chat,
             rendered_human=LLM_QUERY_PROMPT.format(**variables),
             answer=result,
+            low_fidelity_visual=low_fidelity_visual,
         )
 
         context = f"{query}\n\n\n{result}"

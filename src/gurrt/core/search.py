@@ -54,7 +54,8 @@ class SearchService:
                                             top_k)
         captions_list = caption_frame_collection(results_reranked)
         asr_list = [
-            {"text": doc,
+            {"kind": "audio",
+             "text": doc,
              "start_sec": meta.get("start_sec"),
              "end_sec": meta.get("end_sec"),
              "score": meta.get("relevance_score", 0.0)}
@@ -74,8 +75,19 @@ class SearchService:
         """
         captions_list, asr_list = self.query_collection(
             device, query, top_k=top_k, candidate_k=candidate_k)
-        anchors = captions_list + asr_list
-        timeline, used = build_timeline(anchors, self.db, token_budget, pad_sec)
-        return timeline, used
+
+        captioners = {f.get("captioner") for f in captions_list if f.get("captioner")}
+        low_fidelity = bool(captioners) and captioners.issubset(
+            self.settings.LOW_FIDELITY_CAPTIONERS)
+        penalty = self.settings.VISUAL_ANCHOR_PENALTY if low_fidelity else 0.0
+
+        timeline, used = build_timeline(captions_list + asr_list, self.db,
+                                        token_budget, pad_sec,
+                                        visual_penalty=penalty)
+        return timeline, used, {
+            "captioners": sorted(captioners),
+            "low_fidelity_visual": low_fidelity,
+            "visual_anchor_penalty": penalty,
+        }
 
 

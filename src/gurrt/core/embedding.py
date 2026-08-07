@@ -12,7 +12,7 @@ from gurrt.utils.llama_server_utils import batch_caption_frames
 
 
 def _build_records(caption_list, timestamps_list, end_times, ids, fps,
-                   video_path, text_embedder):
+                   video_path, text_embedder, captioner):
     """Turn captions into vector-DB rows keyed by the caption text.
 
     Frames are indexed by what they *say*, not by what they look like: a CLIP
@@ -29,6 +29,8 @@ def _build_records(caption_list, timestamps_list, end_times, ids, fps,
             "end_sec": end_times[i],
             "fps": fps,
             "source_path": str(video_path),
+            # Recorded so `ask` knows how far to trust these captions.
+            "captioner": captioner,
         }
         for i in range(n)
     ]
@@ -54,7 +56,7 @@ def frame_detection(video_path: Path,
                                                     smol_processor= smol_processor,
                                                     device = device)
     return _build_records(caption_list, timestamps_list, end_times, ids, fps,
-                          video_path, text_embedder)
+                          video_path, text_embedder, captioner="smolvlm")
 
 
 def frame_detection_blip(video_path: Path,
@@ -70,7 +72,7 @@ def frame_detection_blip(video_path: Path,
                                                     blip_processor= blip_processor,
                                                     device = device)
     return _build_records(caption_list, timestamps_list, end_times, ids, fps,
-                          video_path, text_embedder)
+                          video_path, text_embedder, captioner="blip2")
 
 
 def captioning_and_embedding_llama_server(
@@ -107,6 +109,7 @@ def captioning_and_embedding_llama_server(
             "end_sec": end_times[i],
             "fps": fps,
             "source_path": str(video_path),
+            "captioner": "gemma3",
         }
         for i in kept
     ]
@@ -127,4 +130,5 @@ def frame_detection_ollama(video_path: Path,
     caption_list = captioning_ollama(frame_PIL= frame_PIL,
                                      model_name= model_name)
     return _build_records(caption_list, timestamps_list, end_times, ids, fps,
-                          video_path, text_embedder)
+                          video_path, text_embedder,
+                          captioner=f"ollama:{model_name}")
