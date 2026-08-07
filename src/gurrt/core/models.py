@@ -6,7 +6,7 @@ from transformers import  (
     BlipForConditionalGeneration, 
     SmolVLMProcessor, 
     SmolVLMForConditionalGeneration)
-from sentence_transformers import CrossEncoder
+from sentence_transformers import CrossEncoder, SentenceTransformer
 from faster_whisper import WhisperModel, BatchedInferencePipeline
 from huggingface_hub import snapshot_download
 
@@ -32,7 +32,8 @@ class ModelManager:
         
         self._whisper = None
         self._reranker = None
-        
+        self._text_embedder = None
+
     def _to_device(self, model):
         return model.to(self.device)
     
@@ -106,6 +107,15 @@ class ModelManager:
         self._whisper = None
         self._free_gpu()
         
+    def get_text_embedder(self):
+        path = self.cache / "text_embed_model"
+        self._text_embedder = SentenceTransformer(str(path), device=self.device)
+        return self._text_embedder
+
+    def release_text_embedder(self):
+        self._text_embedder = None
+        self._free_gpu()
+
     def get_reranker(self):
         path = self.cache / "reranker_model"
         self._reranker = CrossEncoder(str(path))
@@ -120,6 +130,7 @@ class ModelManager:
         
         self._whisper = None
         self._reranker = None
+        self._text_embedder = None
         self._free_gpu()
         
 def download_models(cache_dir):
@@ -140,6 +151,10 @@ def download_models(cache_dir):
     smolVLM_proc = SmolVLMProcessor.from_pretrained("HuggingFaceTB/SmolVLM2-500M-Video-Instruct")
     smolVLM.save_pretrained(cache_dir / "smolVLM_model")
     smolVLM_proc.save_pretrained(cache_dir / "smolVLM_model")
+
+    ui.step("Downloading text embedder...")
+    text_embedder = SentenceTransformer("BAAI/bge-small-en-v1.5")
+    text_embedder.save(str(cache_dir / "text_embed_model"))
 
     ui.step("Downloading Reranker...")
     reranker = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")

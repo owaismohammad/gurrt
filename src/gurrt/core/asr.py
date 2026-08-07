@@ -1,44 +1,25 @@
 import os
 from pathlib import Path
-import torch
 
 from gurrt.config.config import Settings
-# from gurrt.utils.utils import audio_extraction, audio_to_text, chunk_text
-from gurrt.utils.utils import audio_extraction, audio_to_segments, chunk_segments
+from gurrt.utils.utils import (audio_extraction, audio_to_segments,
+                               chunk_segments, embed_texts)
 from gurrt.cli import ui
 
 def audio_extract_chunk_and_embed(video_path: Path,
-                                settings: Settings, 
-                                clip_model, 
-                                clip_processor, 
+                                settings: Settings,
+                                text_embedder,
                                 whisper_model,
                                 device):
     ui.step("Extracting audio track...")
     audio_file = audio_extraction(path=video_path, settings=settings)
     ui.step("Transcribing audio...")
-    # text = audio_to_text(audio_file, 
-    #                     model= whisper_model,
-    #                     beam_size= 1)
-    # chunked_text = chunk_text(text=text)
-    # clip_inputs = clip_processor(text= chunked_text, 
-    #                             return_tensors="pt", 
-    #                             padding= True, 
-    #                             truncation = True).to(device)
     segments = audio_to_segments(audio_file,
                                 model= whisper_model,
                                 beam_size= 1)
     chunks = chunk_segments(segments)
     chunked_text = [c["text"] for c in chunks]
-    clip_inputs = clip_processor(text= chunked_text, 
-                                    return_tensors="pt", 
-                                    padding= True, 
-                                    truncation = True).to(device)
-    with torch.no_grad():
-        text_features = clip_model.get_text_features(**clip_inputs)
-        text_features = text_features.pooler_output
-        text_features = text_features / text_features.norm(p=2, dim=-1, keepdim=True)
-        
-    text_features = text_features.cpu().numpy()
+    text_features = embed_texts(chunked_text, text_embedder)
     video_id = os.path.basename(video_path)
     ids = [
         f"{video_id}_chunk_{i}" 

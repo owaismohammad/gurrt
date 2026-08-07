@@ -18,6 +18,9 @@ class Settings:
         else:
             raise RuntimeError("API Keys not found")
         self.CLIP_MODEL = "openai/clip-vit-base-patch32"
+        # Every collection is keyed by text (captions and transcript alike), so
+        # one embedder serves both the index and the query side.
+        self.TEXT_EMBED_MODEL = "BAAI/bge-small-en-v1.5"
         self.LLM_MODEL="llama-3.1-8b-instant"
         self.RERANKER_MODEL = 'cross-encoder/ms-marco-MiniLM-L-6-v2'
         self.BLIP_MODEL = "Salesforce/blip-image-captioning-large"

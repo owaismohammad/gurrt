@@ -64,13 +64,27 @@ def chunk_segments(segments, max_chars: int = 1000, overlap_segments: int = 1):
             "end_sec": buf[-1][1],
         })
     return chunks
-def generate_captions_in_batches(batch_of_frames, 
-                                 clip_model, 
-                                 clip_processor, 
+def embed_texts(texts: list, embedder, batch_size: int = 32) -> list:
+    """Embed text for the vector DB.
+
+    Frames and transcript chunks live in separate collections but are searched
+    with one query vector, so both must be embedded by this same model.
+    """
+    if not texts:
+        return []
+    vectors = embedder.encode(
+        texts,
+        batch_size=batch_size,
+        normalize_embeddings=True,
+        show_progress_bar=False,
+    )
+    return vectors.tolist()
+
+
+def generate_captions_in_batches(batch_of_frames,
                                  smol_model,
-                                 smol_processor, 
+                                 smol_processor,
                                  device):
-    clip_inputs = clip_processor(images=batch_of_frames, return_tensors="pt").to(device)
     messages_batch = [
         [{"role": "user","content": [{"type": "image"},{"type": "text", 
         "text": VLM_PROMPT}]}]
@@ -86,40 +100,27 @@ def generate_captions_in_batches(batch_of_frames,
         padding=True,
     ).to(device)
     with torch.no_grad():
-        clip_outputs = clip_model.get_image_features(clip_inputs.pixel_values)
-        clip_outputs = clip_outputs.pooler_output
-        clip_embeddings = clip_outputs / clip_outputs.norm(p=2, dim=-1, keepdim=True)
         smol_output_ids = smol_model.generate(
                 **smol_inputs,
                 max_new_tokens=200  ,
                 do_sample=False,
             )
-        captions = smol_processor.batch_decode(smol_output_ids, skip_special_tokens = True)
     input_len = smol_inputs["input_ids"].shape[1]
     captions = [
         smol_processor.decode(smol_output_ids[i, input_len:], skip_special_tokens=True)
         for i in range(len(batch_of_frames))
     ]
-    embeddings_list = clip_embeddings.cpu().numpy().tolist()
     if device == "cuda":
-        del clip_inputs
         del smol_inputs
-        del clip_embeddings
         del smol_output_ids
 
-    return captions, embeddings_list
-def generate_captions_in_batches_blip(batch_of_frames, 
-                                clip_model, 
-                                clip_processor, 
-                                blip_model, 
+    return captions
+def generate_captions_in_batches_blip(batch_of_frames,
+                                blip_model,
                                 blip_processor,
                                 device):
-    clip_inputs = clip_processor(images=batch_of_frames, return_tensors="pt").to(device)
     blip_inputs = blip_processor(images = batch_of_frames, return_tensors = 'pt').to(device)
     with torch.no_grad():
-        clip_outputs = clip_model.get_image_features(clip_inputs.pixel_values)
-        clip_outputs = clip_outputs.pooler_output
-        clip_embeddings = clip_outputs / clip_outputs.norm(p=2, dim=-1, keepdim=True)
         blip_output_ids = blip_model.generate(**blip_inputs,
                                         # max_length = 300, # run on 6gb vram
                                         min_length = 15,
@@ -130,66 +131,51 @@ def generate_captions_in_batches_blip(batch_of_frames,
                                         num_beams = 3,
                                         )
         captions = blip_processor.batch_decode(blip_output_ids, skip_special_tokens=True)
-            
-    embeddings_list = clip_embeddings.cpu().numpy().tolist()
+
     if device == "cuda":
-        del clip_inputs
         del blip_inputs
-        del clip_embeddings
         del blip_output_ids
 
-    return captions, embeddings_list
+    return captions
 
 def batched_captioning(frame_list: list,
                     batch_size: int,
-                    clip_model,
-                    clip_processor,
                     smol_model,
                     smol_processor,
                     device):
     caption_list = []
-    embedding_list = []
     total_batches = (len(frame_list) + batch_size - 1) // batch_size
     with ui.make_progress() as progress:
         task_id = progress.add_task("  Analyzing frames", total=total_batches)
         for i in range(0, len(frame_list), batch_size):
             batch = frame_list[i:i + batch_size]
-            caption, embedding = generate_captions_in_batches(batch,
-                                                              clip_model=clip_model,
-                                                              clip_processor=clip_processor,
+            caption = generate_captions_in_batches(batch,
                                                               smol_model=smol_model,
                                                               smol_processor=smol_processor,
                                                               device=device)
             caption_list.extend(caption)
-            embedding_list.extend(embedding)
             progress.advance(task_id)
-    return caption_list, embedding_list
+    return caption_list
 
 
 def batched_captioning_blip(frame_list: list,
                     batch_size: int,
-                    clip_model,
-                    clip_processor,
                     blip_model,
                     blip_processor,
                     device):
     caption_list = []
-    embedding_list = []
     total_batches = (len(frame_list) + batch_size - 1) // batch_size
     with ui.make_progress() as progress:
         task_id = progress.add_task("  Analyzing frames", total=total_batches)
         for i in range(0, len(frame_list), batch_size):
             batch = frame_list[i:i + batch_size]
-            caption, embedding = generate_captions_in_batches_blip(batch,
-                                                                   clip_model=clip_model,
-                                                                   clip_processor=clip_processor,
+            caption = generate_captions_in_batches_blip(batch,
                                                                    blip_model=blip_model,
                                                                    blip_processor=blip_processor,
                                                                    device=device)
             caption_list.extend(caption)
-            embedding_list.extend(embedding)
             progress.advance(task_id)
-    return caption_list, embedding_list
+    return caption_list
 
 def caption_frame_collection(results_reranked: Dict[str, Any]) -> list:
     """Return caption records with their timing, not bare strings.
@@ -311,45 +297,18 @@ def rerank_docs(query: str,
         'distances': [final_dists]
     }    
 
-def captioning_ollama(video_path: Path,
-                                frame_PIL,
-                                timestamps_list,
-                                end_times,
-                                fps,
-                                model_name: str,
-                                clip_model,
-                                clip_processor, 
-                                device):
-    embeddings = []
-    metadatas = []
-    ids = []
-    
+def captioning_ollama(frame_PIL, model_name: str):
+    """Caption frames via a local ollama VLM. Embedding happens in the caller."""
+    captions = []
     with ui.make_progress() as progress:
         task_id = progress.add_task("  Processing frames", total=len(frame_PIL))
-        for i, frame_no in enumerate(frame_PIL):
-            inputs = clip_processor(images=frame_no, return_tensors="pt").to(device)
+        for frame_no in frame_PIL:
             buffer = BytesIO()
-            caption = generate_caption(frame_no, buffer, model_name)
-
-            with torch.no_grad():
-                outputs = clip_model.get_image_features(inputs.pixel_values)
-            image_embedding = outputs.pooler_output
-            image_embedding = image_embedding / image_embedding.norm(dim=-1, keepdim=True)
-            image_embedding = image_embedding.squeeze(0).cpu().numpy().tolist()
-            frame_id = f"{video_path}:{timestamps_list[i]}"
-
-            ids.append(frame_id)
-            embeddings.append(image_embedding)
-            metadatas.append({
-                "caption": caption,
-                "start_sec": timestamps_list[i],
-                "end_sec": end_times[i],
-                "fps": fps,
-                "source_path": str(video_path),
-            })
+            captions.append(generate_caption(frame_no, buffer, model_name))
             progress.advance(task_id)
-    return embeddings, metadatas, ids
-  
+    return captions
+
+
 def _resize_long_edge(img: Image.Image, target: int = 896) -> Image.Image:
     """Scale so the long edge is `target`, preserving aspect ratio.
 

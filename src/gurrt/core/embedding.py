@@ -1,73 +1,77 @@
 from pathlib import Path
 import time
-import torch
 from gurrt.core.models import ModelManager
 from gurrt.cli import ui
 from gurrt.utils.utils import (
                             batched_captioning,
                             batched_captioning_blip,
                             temporal_persistence_filter,
-                            captioning_ollama)
+                            captioning_ollama,
+                            embed_texts)
 from gurrt.utils.llama_server_utils import batch_caption_frames
+
+
+def _build_records(caption_list, timestamps_list, end_times, ids, fps,
+                   video_path, text_embedder):
+    """Turn captions into vector-DB rows keyed by the caption text.
+
+    Frames are indexed by what they *say*, not by what they look like: a CLIP
+    image vector barely encodes small on-screen text, which is most of what a
+    lecture slide carries. Embedding the caption also puts frames and
+    transcript chunks in one shared space, so a single query vector searches
+    both collections.
+    """
+    n = len(caption_list)
+    metadatas = [
+        {
+            "caption": caption_list[i],
+            "start_sec": timestamps_list[i],
+            "end_sec": end_times[i],
+            "fps": fps,
+            "source_path": str(video_path),
+        }
+        for i in range(n)
+    ]
+    embeddings = embed_texts(caption_list, text_embedder)
+    return embeddings, metadatas, ids[:n]
+
 
 def frame_detection(video_path: Path,
                     models: ModelManager,
                     flag: bool,
-                    clip_model, 
-                    clip_processor, 
+                    text_embedder,
                     device):
-    
+
     frame_PIL, timestamps_list, end_times, ids, fps = temporal_persistence_filter(video_path= video_path)
     if flag :
         batch_size=4
     else:
-        batch_size=8    
+        batch_size=8
     smol_model, smol_processor = models.get_smol(flag = flag)
-    caption_list, embeddings_list = batched_captioning(frame_list= frame_PIL, 
-                                                    batch_size= batch_size, 
-                                                    clip_model= clip_model, 
-                                                    clip_processor= clip_processor, 
+    caption_list = batched_captioning(frame_list= frame_PIL,
+                                                    batch_size= batch_size,
                                                     smol_model= smol_model,
                                                     smol_processor= smol_processor,
                                                     device = device)
-    metadatas = [
-            {
-            "caption": caption_list[i],
-            "start_sec": timestamps_list[i],
-            "end_sec": end_times[i],
-            "fps": fps,
-            "source_path": str(video_path)
-            }
-                for i in range(len(caption_list))
-                ]
-    return embeddings_list, metadatas, ids
+    return _build_records(caption_list, timestamps_list, end_times, ids, fps,
+                          video_path, text_embedder)
+
 
 def frame_detection_blip(video_path: Path,
                     models: ModelManager,
-                    clip_model, 
-                    clip_processor, 
+                    text_embedder,
                     device):
-    
+
     frame_PIL, timestamps_list, end_times, ids, fps = temporal_persistence_filter(video_path= video_path)
-    blip_model, blip_processor = models.get_blip()    
-    caption_list, embeddings_list = batched_captioning_blip(frame_list= frame_PIL, 
-                                                    batch_size=8, 
-                                                    clip_model= clip_model, 
-                                                    clip_processor= clip_processor, 
-                                                    blip_model= blip_model, 
+    blip_model, blip_processor = models.get_blip()
+    caption_list = batched_captioning_blip(frame_list= frame_PIL,
+                                                    batch_size=8,
+                                                    blip_model= blip_model,
                                                     blip_processor= blip_processor,
                                                     device = device)
-    metadatas = [
-            {
-            "caption": caption_list[i],
-            "start_sec": timestamps_list[i],
-            "end_sec": end_times[i],
-            "fps": fps,
-            "source_path": str(video_path)
-            }
-                for i in range(len(caption_list))
-                ]
-    return embeddings_list, metadatas, ids
+    return _build_records(caption_list, timestamps_list, end_times, ids, fps,
+                          video_path, text_embedder)
+
 
 def captioning_and_embedding_llama_server(
     frame_PIL,
@@ -76,12 +80,8 @@ def captioning_and_embedding_llama_server(
     ids,
     fps,
     video_path,
-    clip_model,
-    clip_processor,
-    device
+    text_embedder,
 ):
-    #frame_PIL, timestamps_list, ids, fps = temporal_persistence_filter(video_path=video_path)
-
     ui.info(f"Dispatching {len(frame_PIL)} frames to captioning server...")
     captioned_nodes = []
     start_time = time.time()
@@ -91,60 +91,40 @@ def captioning_and_embedding_llama_server(
         ui.error(f"Batch captioning failed: {e}")
         return [], [], []
     end_time = time.time()
-    ui.info(f"Captioning done in {end_time - start_time:.1f}s — extracting embeddings...")
+    ui.info(f"Captioning done in {end_time - start_time:.1f}s — embedding captions...")
 
-    # Corrupt frames are skipped by the captioner and CLIP can fail on any
-    # single frame, so ids/embeddings/metadatas are built together off the
-    # frame's own index. Building them from separate loops lets one skip
-    # shift every caption onto the wrong timestamp.
+    # Corrupt frames are skipped by the captioner, so rows are built off each
+    # frame's own index. Building them from separate loops lets one skip shift
+    # every caption onto the wrong timestamp.
     caption_by_index = {node["index"]: node["text"] for node in captioned_nodes}
+    kept = sorted(caption_by_index)
 
-    embeddings = []
-    metadatas = []
-    final_ids = []
+    caption_list = [caption_by_index[i] for i in kept]
+    metadatas = [
+        {
+            "caption": caption_by_index[i],
+            "start_sec": timestamps_list[i],
+            "end_sec": end_times[i],
+            "fps": fps,
+            "source_path": str(video_path),
+        }
+        for i in kept
+    ]
+    final_ids = [ids[i] for i in kept]
+
     start_time = time.time()
-    with ui.make_progress() as progress:
-        task_id = progress.add_task("  Extracting CLIP embeddings", total=len(caption_by_index))
-        for i in sorted(caption_by_index):
-            try:
-                inputs = clip_processor(images=frame_PIL[i], return_tensors="pt").to(device)
-                with torch.no_grad():
-                    outputs = clip_model.get_image_features(**inputs)
-                image_embedding = outputs.pooler_output
-                image_embedding = image_embedding / image_embedding.norm(dim=-1, keepdim=True)
-                image_embedding = image_embedding.squeeze(0).cpu().numpy().tolist()
-            except Exception as e:
-                ui.error(f"CLIP embedding failed on frame {i}: {e}")
-                progress.advance(task_id)
-                continue
-
-            embeddings.append(image_embedding)
-            metadatas.append({
-                "caption": caption_by_index[i],
-                "start_sec": timestamps_list[i],
-                "end_sec": end_times[i],
-                "fps": fps,
-                "source_path": str(video_path),
-            })
-            final_ids.append(ids[i])
-            progress.advance(task_id)
+    embeddings = embed_texts(caption_list, text_embedder)
     end_time = time.time()
-    ui.info(f"CLIP embeddings done in {end_time - start_time:.1f}s")
+    ui.info(f"Caption embeddings done in {end_time - start_time:.1f}s")
     return embeddings, metadatas, final_ids
 
+
 def frame_detection_ollama(video_path: Path,
-                            clip_model, 
-                            clip_processor, 
+                            text_embedder,
                             model_name:str,
                             device):
     frame_PIL, timestamps_list, end_times, ids, fps = temporal_persistence_filter(video_path= video_path)
-    embeddings, metadatas, ids =  captioning_ollama(video_path= video_path,
-                                                    clip_model= clip_model,
-                                                    clip_processor= clip_processor,
-                                                    model_name= model_name,
-                                                    frame_PIL= frame_PIL,
-                                                    timestamps_list = timestamps_list,
-                                                    end_times = end_times,
-                                                    fps = fps,
-                                                    device= device)
-    return embeddings, metadatas, ids
+    caption_list = captioning_ollama(frame_PIL= frame_PIL,
+                                     model_name= model_name)
+    return _build_records(caption_list, timestamps_list, end_times, ids, fps,
+                          video_path, text_embedder)

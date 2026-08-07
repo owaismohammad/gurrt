@@ -1,19 +1,17 @@
 from gurrt.config.config import Settings
-from gurrt.utils.utils import rerank, rerank_docs, caption_frame_collection
+from gurrt.utils.utils import (rerank, rerank_docs, caption_frame_collection,
+                               embed_texts)
 from gurrt.core.vectordb import VectorDB
-import torch
 
 class SearchService:
     def __init__(self,
-                clip_model,
-                clip_processor,
+                text_embedder,
                 reranker,
                 vectordb: VectorDB,
                 settings: Settings):
-        self.model = clip_model
-        self.processor = clip_processor
+        self.text_embedder = text_embedder
         self.reranker = reranker
-        
+
         self.settings = settings
         self.cache_dir = self.settings.MODEL_CACHE_DIR
         self.db = vectordb
@@ -21,14 +19,12 @@ class SearchService:
     def _embed_text(self,
                     query,
                     device):
-        text_embedding  = self.processor(text = [query], return_tensors = 'pt').to(device)
-    
-        with torch.no_grad():
-            output = self.model.get_text_features(**text_embedding)
-        text_features = output.pooler_output
-        text_features = text_features / text_features.norm(dim=-1, keepdim=True)
-        text_features = text_features.cpu().numpy()[0]  # shape (512,)
-        return text_features
+        """One query vector searches both collections.
+
+        Frame captions and transcript chunks are embedded by the same model at
+        index time, so they share a space and need only one query embedding.
+        """
+        return embed_texts([query], self.text_embedder)[0]
 
     def query_collection(self,
                         device,

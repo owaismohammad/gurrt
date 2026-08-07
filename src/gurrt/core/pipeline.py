@@ -30,7 +30,7 @@ class VideoRag:
         self.vectordb = VectorDB(str(self.settings.CHROMA_DB_PATH), reset=reset)
         self.llm = LLMService(self.settings)
         self.device = self.models.device
-        self.clip_model, self.clip_processor= self.models.get_clip()
+        self.text_embedder = self.models.get_text_embedder()
 
     def index_video(self, video_path:Path, flag:bool):
         if self.reset:
@@ -39,10 +39,9 @@ class VideoRag:
             except Exception:
                 pass
         embeddings, metadatas, ids = frame_detection(video_path= video_path,
-                                                    clip_model=self.clip_model,
-                                                    clip_processor=self.clip_processor,
+                                                    text_embedder=self.text_embedder,
                                                     models = self.models,
-                                                    device = self.device, 
+                                                    device = self.device,
                                                     flag = flag)
         self.vectordb.add_frames(ids=ids,
                                 embeddings=embeddings,
@@ -56,8 +55,7 @@ class VideoRag:
             except Exception:
                 pass
         embeddings, metadatas, ids = frame_detection_blip(video_path= video_path,
-                                                    clip_model=self.clip_model,
-                                                    clip_processor=self.clip_processor,
+                                                    text_embedder=self.text_embedder,
                                                     models = self.models,
                                                     device = self.device)
         self.vectordb.add_frames(ids=ids,
@@ -73,8 +71,7 @@ class VideoRag:
                 pass
         embeddings, metadatas, ids = frame_detection_ollama(
                                                             video_path= video_path,
-                                                            clip_model=self.clip_model,
-                                                            clip_processor=self.clip_processor,
+                                                            text_embedder=self.text_embedder,
                                                             model_name=model_name,
                                                             device= self.device)
         self.vectordb.add_frames(ids=ids,
@@ -121,9 +118,7 @@ class VideoRag:
             ui.success("Video frames processed and captioning server ready")
             embeddings, metadatas, ids = captioning_and_embedding_llama_server(
                                                                         frame_PIL= frame_PIL,
-                                                                        clip_model=self.clip_model,
-                                                                        clip_processor=self.clip_processor,
-                                                                        device=self.device,
+                                                                        text_embedder=self.text_embedder,
                                                                         timestamps_list= timestamps_list,
                                                                         end_times= end_times,
                                                                         ids= ids,
@@ -144,8 +139,7 @@ class VideoRag:
         chunked_text, metadatas, embeddings, ids = audio_extract_chunk_and_embed(
                                                             video_path=video_path,
                                                             settings = self.settings,
-                                                            clip_model=self.clip_model,
-                                                            clip_processor=self.clip_processor,
+                                                            text_embedder=self.text_embedder,
                                                             whisper_model=whisper_model,
                                                             device = self.device)
         self.vectordb.add_asr(ids=ids,
@@ -153,14 +147,11 @@ class VideoRag:
                             metadata=metadatas,
                             documents= chunked_text)
         self.models.release_whisper()
-        self.models.release_clip()
-        self.models.release_all()
 
     async def ask(self, query:str):
         reranker = self.models.get_reranker()
         
-        search = SearchService(clip_model=self.clip_model,
-                                clip_processor=self.clip_processor,
+        search = SearchService(text_embedder=self.text_embedder,
                                 reranker= reranker,
                                 vectordb= self.vectordb,
                                 settings= self.settings)
