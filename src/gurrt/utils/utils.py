@@ -190,6 +190,7 @@ def caption_frame_collection(results_reranked: Dict[str, Any]) -> list:
                 "caption": metadata["caption"],
                 "start_sec": metadata.get("start_sec"),
                 "end_sec": metadata.get("end_sec"),
+                "score": metadata.get("relevance_score", 0.0),
             })
     return frames
 

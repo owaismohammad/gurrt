@@ -2,6 +2,7 @@ from gurrt.config.config import Settings
 from gurrt.utils.utils import (rerank, rerank_docs, caption_frame_collection,
                                embed_texts)
 from gurrt.core.vectordb import VectorDB
+from gurrt.core.context import build_timeline
 
 class SearchService:
     def __init__(self,
@@ -55,10 +56,26 @@ class SearchService:
         asr_list = [
             {"text": doc,
              "start_sec": meta.get("start_sec"),
-             "end_sec": meta.get("end_sec")}
+             "end_sec": meta.get("end_sec"),
+             "score": meta.get("relevance_score", 0.0)}
             for doc, meta in zip(results_reranked_audio["documents"][0],
                                  results_reranked_audio["metadatas"][0])
         ]
         return captions_list, asr_list
+
+    def build_context(self, device, query: str, token_budget: int,
+                      pad_sec: float, top_k: int = 5, candidate_k: int = 40):
+        """Retrieve, expand each hit into its surrounding seconds, and cap.
+
+        Vector search returns moments, not narrative: five hits can land at
+        04:00, 04:00, 19:00 and 41:00 with nothing joining them. Expanding
+        each into a window and merging is what turns matches back into
+        something readable.
+        """
+        captions_list, asr_list = self.query_collection(
+            device, query, top_k=top_k, candidate_k=candidate_k)
+        anchors = captions_list + asr_list
+        timeline, used = build_timeline(anchors, self.db, token_budget, pad_sec)
+        return timeline, used
 
 

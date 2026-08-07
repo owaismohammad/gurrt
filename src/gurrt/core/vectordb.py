@@ -44,6 +44,27 @@ class VectorDB:
         n_results= n_results
     )   
         
+    def _in_range(self, collection, start_sec: float, end_sec: float):
+        """Rows whose [start_sec, end_sec] overlaps the requested span.
+
+        Overlap, not nearest-timestamp: a slide held for three minutes must
+        match everything said during it, not only the instant it appeared.
+        """
+        try:
+            return collection.get(
+                where={"$and": [{"start_sec": {"$lte": end_sec}},
+                                {"end_sec": {"$gte": start_sec}}]},
+                include=["metadatas", "documents"],
+            )
+        except Exception:
+            return {"metadatas": [], "documents": [], "ids": []}
+
+    def frames_in_range(self, start_sec: float, end_sec: float):
+        return self._in_range(self.caption_collection, start_sec, end_sec)
+
+    def audio_in_range(self, start_sec: float, end_sec: float):
+        return self._in_range(self.asr_collection, start_sec, end_sec)
+
     def _reset_collection(self):
         try:
             self.client.delete_collection("frame_embedding_collection")

@@ -24,6 +24,14 @@ class Settings:
         self.LLM_MODEL="llama-3.1-8b-instant"
         self.RERANKER_MODEL = 'cross-encoder/ms-marco-MiniLM-L-6-v2'
         self.BLIP_MODEL = "Salesforce/blip-image-captioning-large"
+        # Context budget. The model's window is far larger than these numbers,
+        # but an 8B model stops attending well long before it runs out of room:
+        # a wall of loosely-related context buries the query instead of
+        # answering it. Keep the retrieved material small and dense.
+        self.CONTEXT_TOKEN_BUDGET = 3500   # the lecture timeline
+        self.CHAT_TOKEN_BUDGET = 600       # prior conversation
+        self.WINDOW_PAD_SEC = 30.0         # context pulled either side of a hit
+
         self.MODEL_CACHE_DIR = home / "models"
         self.CHROMA_DB_PATH= home / "chroma_db"
         self.AUDIO_PATH = home / "output.wav"

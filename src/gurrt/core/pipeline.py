@@ -155,12 +155,15 @@ class VideoRag:
                                 reranker= reranker,
                                 vectordb= self.vectordb,
                                 settings= self.settings)
-        caption_list, asr_list = search.query_collection(self.device,
-                                                        query,
-                                                        top_k=5,
-                                                        candidate_k=40)
-        result = await self.llm.query_llm(query, 
-                                        caption_list=caption_list, 
-                                        asr_list=asr_list)
+        timeline, used_tokens = search.build_context(
+            self.device,
+            query,
+            token_budget=self.settings.CONTEXT_TOKEN_BUDGET,
+            pad_sec=self.settings.WINDOW_PAD_SEC,
+            top_k=5,
+            candidate_k=40)
+        ui.info(f"Context: ~{used_tokens} tokens of "
+                f"{self.settings.CONTEXT_TOKEN_BUDGET} budget")
+        result = await self.llm.query_llm(query, timeline=timeline)
         self.models.release_all()
         return result
