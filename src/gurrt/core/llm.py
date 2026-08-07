@@ -1,5 +1,6 @@
 from gurrt.core.prompts import LLM_QUERY_PROMPT, LLM_SYSTEM_PROMPT
 from gurrt.core.context import format_prior_chat
+from gurrt.core.debuglog import log_query
 
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
@@ -35,12 +36,24 @@ class LLMService:
             ("system", LLM_SYSTEM_PROMPT),
             ("human", LLM_QUERY_PROMPT),
         ])
-        chain = prompt | self.llm | parser
-        result = await chain.ainvoke({
+        variables = {
             "timeline": timeline or "No indexed content matched this question.",
             "previous_chat": previous_chat,
             "query" : query
-        })
+        }
+        chain = prompt | self.llm | parser
+        result = await chain.ainvoke(variables)
+
+        log_query(
+            self.settings,
+            query=query,
+            system_prompt=LLM_SYSTEM_PROMPT,
+            timeline=variables["timeline"],
+            previous_chat=previous_chat,
+            rendered_human=LLM_QUERY_PROMPT.format(**variables),
+            answer=result,
+        )
+
         context = f"{query}\n\n\n{result}"
         self.client_memory.add(
             content = context,

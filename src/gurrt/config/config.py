@@ -35,6 +35,9 @@ class Settings:
         self.MODEL_CACHE_DIR = home / "models"
         self.CHROMA_DB_PATH= home / "chroma_db"
         self.AUDIO_PATH = home / "output.wav"
+        # Inspection logs: captions and transcript per video, plus the exact
+        # context sent to the LLM per query.
+        self.LOGS_DIR = home / "logs"
        
 # config_dir = Path(user_config_dir("gurrt"))
 

@@ -15,6 +15,7 @@ from gurrt.utils.llama_server_utils import process_video,wait_for_server
 from gurrt.core.llm import LLMService
 from gurrt.core.models import ModelManager
 from gurrt.core.search import SearchService
+from gurrt.core.debuglog import log_captions, log_transcript
 from gurrt.core.vectordb import VectorDB
 from gurrt.config.config import LlamaServerManager
 from gurrt.cli import ui
@@ -46,6 +47,7 @@ class VideoRag:
         self.vectordb.add_frames(ids=ids,
                                 embeddings=embeddings,
                                 metadata=metadatas)
+        log_captions(self.settings, video_path, metadatas, ids)
         self.models.release_smol()
 
     def index_video_blip(self, video_path:Path):
@@ -61,6 +63,7 @@ class VideoRag:
         self.vectordb.add_frames(ids=ids,
                                 embeddings=embeddings,
                                 metadata=metadatas)
+        log_captions(self.settings, video_path, metadatas, ids)
         self.models.release_blip()
 
     def index_video_ollama(self, video_path:Path, model_name: str):
@@ -77,7 +80,9 @@ class VideoRag:
         self.vectordb.add_frames(ids=ids,
                                 embeddings=embeddings,
                                 metadata=metadatas)
-    
+        log_captions(self.settings, video_path, metadatas, ids)
+
+
     def index_video_llama_server(self, video_path: Path, server_bin: Path, models_dir: Path):
         if self.reset:
             try:
@@ -127,6 +132,7 @@ class VideoRag:
             self.vectordb.add_frames(ids=ids,
                                         embeddings=embeddings,
                                         metadata=metadatas)
+            log_captions(self.settings, video_path, metadatas, ids)
         except Exception as e:
             ui.error(f"Pipeline failed: {e}")
         finally:
@@ -146,6 +152,7 @@ class VideoRag:
                             embeddings=embeddings,
                             metadata=metadatas,
                             documents= chunked_text)
+        log_transcript(self.settings, video_path, chunked_text, metadatas, ids)
         self.models.release_whisper()
 
     async def ask(self, query:str):

@@ -33,6 +33,7 @@ dependencies = [
     "aiohttp>=3.14.1",
     "num2words>=0.5.14",
     "prompt_toolkit>=3.0.0",
+    "opencv-python>=5.0.0.93",
 ]
 
 [project.urls]
