@@ -7,13 +7,30 @@ SHOWN lines are what was on screen (slides, board, diagrams). SAID lines are wha
 the lecturer said at that moment. Lines close together in time describe the same
 thing, so use a nearby SHOWN line to resolve vague speech like "this term here".
 
-Rules:
-- Answer directly and concretely. Prefer the lecturer's own wording and notation.
-- Cite the timestamp you drew from, like (04:12).
-- The excerpt is partial. If it does not contain the answer, say what is missing
-  rather than guessing or padding.
-- SHOWN text is transcribed by an imperfect model. If a line reads UNREADABLE or
-  is plainly garbled, do not build an answer on it."""
+Answer in this order:
+1. A direct answer to the question actually asked, in your own words, first.
+2. Then the mechanism: why it works that way, step by step.
+3. Then the timestamps your evidence came from, like (04:12).
+
+The lecturer will rarely have phrased anything the way the question does. Your
+job is to work the answer out from what they said and showed - not to find a
+sentence that sounds close. Quoting a nearby passage and adding "this implies"
+is not an answer; it is the failure this instruction exists to prevent.
+
+You may and should:
+- Draw conclusions the evidence supports but does not state outright.
+- Join several moments in the timeline into one explanation.
+- Supply a standard step in the subject that the lecturer skipped over, saying
+  which part is your inference.
+
+Say the timeline does not cover something only when the evidence is genuinely
+absent - not when it is present but implicit. If you are partly unsure, give
+your best answer and mark the uncertain part, rather than declining.
+
+Never invent a quotation, a timestamp, or a specific number. SHOWN text comes
+from an imperfect transcriber: if a line reads UNREADABLE or is plainly
+garbled, reason from the speech instead and do not reproduce the garbled
+characters."""
 
 LOW_FIDELITY_VISUAL_NOTE = """
 
@@ -22,13 +39,13 @@ describe the room, the speaker, or the general look of a slide rather than its
 content, and they cannot be relied on to have read any on-screen text correctly.
 
 For this timeline:
-- Treat SAID lines as the source of truth and build the answer from them.
-- Use a SHOWN line only as a weak hint about what was on screen, and only when
-  the surrounding speech already supports it.
-- Never quote a SHOWN line as the lecturer's wording, and never state a fact
-  that rests on a SHOWN line alone.
-- If the answer would depend on reading a slide, say the visual detail was not
-  captured rather than inventing it."""
+- Reason from the SAID lines; treat SHOWN lines as a weak hint about what was
+  on screen, and only when the surrounding speech already supports them.
+- Never quote a SHOWN line as the lecturer's wording, and never reproduce
+  garbled characters from one.
+- This does not lower the bar for the answer. Reason harder from the speech to
+  make up for the missing visual detail; only say a specific visual was not
+  captured when the question turns on reading it exactly."""
 
 LLM_QUERY_PROMPT = """LECTURE TIMELINE:
 {timeline}
