@@ -99,7 +99,8 @@ def log_transcript(settings, video_path, chunked_text, metadatas, ids) -> None:
 
 
 def log_query(settings, query, system_prompt, timeline, previous_chat,
-              rendered_human, answer, low_fidelity_visual=False) -> None:
+              rendered_human, answer, low_fidelity_visual=False,
+              max_output_tokens=None) -> None:
     """Exactly what was sent to the LLM for one question, and what came back."""
     try:
         d = settings.LOGS_DIR / "queries"
@@ -132,6 +133,11 @@ def log_query(settings, query, system_prompt, timeline, previous_chat,
                 "system_tokens": system_tokens,
                 "human_message_tokens": human_tokens,
                 "total_input_tokens": system_tokens + human_tokens,
+                "max_output_tokens": max_output_tokens,
+                # What Groq bills against the per-minute cap.
+                "tpm_charged_estimate": (
+                    system_tokens + human_tokens + (max_output_tokens or 0)),
+                "tpm_limit": getattr(settings, "TPM_LIMIT", None),
                 "timeline_budget_used_pct": (
                     round(100 * timeline_tokens / settings.CONTEXT_TOKEN_BUDGET, 1)
                     if settings.CONTEXT_TOKEN_BUDGET else None),

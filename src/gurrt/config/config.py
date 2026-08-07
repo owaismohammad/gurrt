@@ -28,9 +28,18 @@ class Settings:
         # but an 8B model stops attending well long before it runs out of room:
         # a wall of loosely-related context buries the query instead of
         # answering it. Keep the retrieved material small and dense.
-        self.CONTEXT_TOKEN_BUDGET = 3500   # the lecture timeline
-        self.CHAT_TOKEN_BUDGET = 600       # prior conversation
+        self.CONTEXT_TOKEN_BUDGET = 2200   # the lecture timeline
+        self.CHAT_TOKEN_BUDGET = 400       # prior conversation
         self.WINDOW_PAD_SEC = 30.0         # context pulled either side of a hit
+
+        # Groq bills input + reserved output against the same per-minute
+        # allowance, so max_tokens is spent whether or not the answer uses it.
+        # Reserving 4096 for a two-paragraph answer burned two thirds of the
+        # free tier's 6000 TPM on nothing.
+        self.TPM_LIMIT = 6000              # free tier; raise if you upgrade
+        self.TPM_SAFETY_MARGIN = 300       # our estimate vs Groq's real count
+        self.MAX_OUTPUT_TOKENS = 1200      # ample for a detailed answer
+        self.MIN_OUTPUT_TOKENS = 400       # never squeeze below a usable reply
 
         # BLIP and SmolVLM describe the room rather than the board: they cannot
         # read slide text, so their captions are near-useless for lecture
