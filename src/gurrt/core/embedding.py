@@ -9,10 +9,12 @@ from gurrt.utils.utils import (
                             captioning_ollama,
                             embed_texts)
 from gurrt.utils.llama_server_utils import batch_caption_frames
+from gurrt.core.debuglog import log_keyframes
 
 
 def _build_records(caption_list, timestamps_list, end_times, ids, fps,
-                   video_path, text_embedder, captioner):
+                   video_path, text_embedder, captioner, settings=None,
+                   frame_PIL=None):
     """Turn captions into vector-DB rows keyed by the caption text.
 
     Frames are indexed by what they *say*, not by what they look like: a CLIP
@@ -34,6 +36,9 @@ def _build_records(caption_list, timestamps_list, end_times, ids, fps,
         }
         for i in range(n)
     ]
+    if settings is not None and frame_PIL is not None:
+        log_keyframes(settings, video_path, frame_PIL[:n], timestamps_list[:n])
+
     embeddings = embed_texts(caption_list, text_embedder)
     return embeddings, metadatas, ids[:n]
 
@@ -42,7 +47,8 @@ def frame_detection(video_path: Path,
                     models: ModelManager,
                     flag: bool,
                     text_embedder,
-                    device):
+                    device,
+                    settings=None):
 
     frame_PIL, timestamps_list, end_times, ids, fps = temporal_persistence_filter(video_path= video_path)
     if flag :
@@ -56,13 +62,15 @@ def frame_detection(video_path: Path,
                                                     smol_processor= smol_processor,
                                                     device = device)
     return _build_records(caption_list, timestamps_list, end_times, ids, fps,
-                          video_path, text_embedder, captioner="smolvlm")
+                          video_path, text_embedder, captioner="smolvlm",
+                          settings=settings, frame_PIL=frame_PIL)
 
 
 def frame_detection_blip(video_path: Path,
                     models: ModelManager,
                     text_embedder,
-                    device):
+                    device,
+                    settings=None):
 
     frame_PIL, timestamps_list, end_times, ids, fps = temporal_persistence_filter(video_path= video_path)
     blip_model, blip_processor = models.get_blip()
@@ -72,7 +80,8 @@ def frame_detection_blip(video_path: Path,
                                                     blip_processor= blip_processor,
                                                     device = device)
     return _build_records(caption_list, timestamps_list, end_times, ids, fps,
-                          video_path, text_embedder, captioner="blip2")
+                          video_path, text_embedder, captioner="blip2",
+                          settings=settings, frame_PIL=frame_PIL)
 
 
 def captioning_and_embedding_llama_server(
@@ -83,6 +92,7 @@ def captioning_and_embedding_llama_server(
     fps,
     video_path,
     text_embedder,
+    settings=None,
 ):
     ui.info(f"Dispatching {len(frame_PIL)} frames to captioning server...")
     captioned_nodes = []
@@ -115,6 +125,13 @@ def captioning_and_embedding_llama_server(
     ]
     final_ids = [ids[i] for i in kept]
 
+    if settings is not None:
+        # Only the frames that produced a caption, so the images match
+        # captions.json exactly.
+        log_keyframes(settings, video_path,
+                      [frame_PIL[i] for i in kept],
+                      [timestamps_list[i] for i in kept])
+
     start_time = time.time()
     embeddings = embed_texts(caption_list, text_embedder)
     end_time = time.time()
@@ -125,10 +142,12 @@ def captioning_and_embedding_llama_server(
 def frame_detection_ollama(video_path: Path,
                             text_embedder,
                             model_name:str,
-                            device):
+                            device,
+                            settings=None):
     frame_PIL, timestamps_list, end_times, ids, fps = temporal_persistence_filter(video_path= video_path)
     caption_list = captioning_ollama(frame_PIL= frame_PIL,
                                      model_name= model_name)
     return _build_records(caption_list, timestamps_list, end_times, ids, fps,
                           video_path, text_embedder,
-                          captioner=f"ollama:{model_name}")
+                          captioner=f"ollama:{model_name}",
+                          settings=settings, frame_PIL=frame_PIL)

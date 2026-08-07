@@ -32,6 +32,24 @@ def _video_dir(settings, video_path) -> Path:
     return d
 
 
+def _hhmmss(sec) -> str:
+    """Timestamp as a sortable, filename-safe string."""
+    if sec is None:
+        return "unknown"
+    s = int(sec)
+    return f"{s // 3600:02d}-{(s % 3600) // 60:02d}-{s % 60:02d}"
+
+
+def frame_image_name(start_sec) -> str:
+    """Filename for a keyframe, derived only from its timestamp.
+
+    Keyframes are at least min_interval_sec apart, so second resolution is
+    unique. Deriving the name from the timestamp alone lets captions.json
+    reference the image without the two having to agree on an ordering.
+    """
+    return f"frames/{_hhmmss(start_sec)}.jpg"
+
+
 def _write(path: Path, payload: dict) -> None:
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=False),
                     encoding="utf-8")
@@ -54,6 +72,7 @@ def log_captions(settings, video_path, metadatas, ids) -> None:
                 "caption": caption,
                 "caption_chars": len(caption),
                 "est_tokens": estimate_tokens(caption),
+                "frame_image": frame_image_name(meta.get("start_sec")),
             })
         rows.sort(key=lambda r: r["start_sec"] if r["start_sec"] is not None else 0)
 
@@ -68,6 +87,41 @@ def log_captions(settings, video_path, metadatas, ids) -> None:
         ui.info(f"Caption log: {out}")
     except Exception as e:
         ui.warn(f"Could not write caption log: {e}")
+
+
+def log_keyframes(settings, video_path, frames, start_secs) -> None:
+    """Write the selected keyframes as JPEGs, exactly as the VLM saw them.
+
+    Two questions this answers that no text log can: did the scene detector
+    pick the right moments, and is the on-screen text actually legible at
+    the resolution the captioner receives. Saved at native size for that
+    reason - downscaling here would hide the very problem worth checking.
+    """
+    try:
+        out_dir = _video_dir(settings, video_path) / "frames"
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        # A re-index replaces the selection, so stale images from a previous
+        # run would otherwise sit alongside the current ones.
+        for old in out_dir.glob("*.jpg"):
+            try:
+                old.unlink()
+            except OSError:
+                pass
+
+        written = 0
+        for frame, start in zip(frames, start_secs):
+            name = Path(frame_image_name(start)).name
+            try:
+                frame.convert("RGB").save(out_dir / name, format="JPEG",
+                                          quality=88)
+                written += 1
+            except Exception as e:
+                ui.warn(f"Could not save keyframe at {start}s: {e}")
+
+        ui.info(f"Keyframes: {out_dir} ({written} images)")
+    except Exception as e:
+        ui.warn(f"Could not write keyframe images: {e}")
 
 
 def log_transcript(settings, video_path, chunked_text, metadatas, ids) -> None:

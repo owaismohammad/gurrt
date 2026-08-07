@@ -43,7 +43,8 @@ class VideoRag:
                                                     text_embedder=self.text_embedder,
                                                     models = self.models,
                                                     device = self.device,
-                                                    flag = flag)
+                                                    flag = flag,
+                                                    settings = self.settings)
         self.vectordb.add_frames(ids=ids,
                                 embeddings=embeddings,
                                 metadata=metadatas)
@@ -59,7 +60,8 @@ class VideoRag:
         embeddings, metadatas, ids = frame_detection_blip(video_path= video_path,
                                                     text_embedder=self.text_embedder,
                                                     models = self.models,
-                                                    device = self.device)
+                                                    device = self.device,
+                                                    settings = self.settings)
         self.vectordb.add_frames(ids=ids,
                                 embeddings=embeddings,
                                 metadata=metadatas)
@@ -76,7 +78,8 @@ class VideoRag:
                                                             video_path= video_path,
                                                             text_embedder=self.text_embedder,
                                                             model_name=model_name,
-                                                            device= self.device)
+                                                            device= self.device,
+                                                            settings= self.settings)
         self.vectordb.add_frames(ids=ids,
                                 embeddings=embeddings,
                                 metadata=metadatas)
@@ -128,7 +131,8 @@ class VideoRag:
                                                                         end_times= end_times,
                                                                         ids= ids,
                                                                         fps= fps,
-                                                                        video_path= video_path)              
+                                                                        video_path= video_path,
+                                                                        settings= self.settings)              
             self.vectordb.add_frames(ids=ids,
                                         embeddings=embeddings,
                                         metadata=metadatas)
