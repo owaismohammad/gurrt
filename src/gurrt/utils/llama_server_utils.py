@@ -18,7 +18,7 @@ from gurrt.cli import ui
 def _convert_pil_to_base64(pil_img) -> str:
     """Converts a PIL image object to a base64 string completely in memory."""
     buffered = io.BytesIO()
-    pil_img.save(buffered, format="JPEG")
+    pil_img.save(buffered, format="JPEG", quality=90, subsampling=0)
     return base64.b64encode(buffered.getvalue()).decode('utf-8')
 
 async def _caption_single_frame_worker(
@@ -48,7 +48,7 @@ async def _caption_single_frame_worker(
                 ]
             }
         ],
-        "temperature": 0.1
+        "temperature": 0.0
     }
     
     async with semaphore:

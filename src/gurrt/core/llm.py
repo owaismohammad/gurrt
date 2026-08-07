@@ -5,6 +5,30 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from supermemory import Supermemory
 
+def _fmt_ts(sec) -> str:
+    if sec is None:
+        return "??:??"
+    return f"{int(sec) // 60:02d}:{int(sec) % 60:02d}"
+
+
+def format_timeline(caption_list: list, asr_list: list) -> str:
+    """Interleave what was shown and what was said into one time-ordered block.
+
+    Two parallel blocks give the model no way to tell which caption goes with
+    which stretch of speech, so deictic transcript ("this term here") has no
+    referent. Sorting both streams onto one clock restores that link.
+    """
+    events = []
+    for f in caption_list:
+        events.append((f.get("start_sec") or 0.0,
+                       f"[{_fmt_ts(f.get('start_sec'))}] SHOWN: {f['caption']}"))
+    for a in asr_list:
+        events.append((a.get("start_sec") or 0.0,
+                       f"[{_fmt_ts(a.get('start_sec'))}] SAID:  {a['text']}"))
+    events.sort(key=lambda e: e[0])
+    return "\n".join(text for _, text in events)
+
+
 class LLMService:
     def __init__(self, settings):
         self.llm = ChatGroq(model = settings.LLM_MODEL,
@@ -17,8 +41,7 @@ class LLMService:
                         query:str,
                         caption_list: list,
                         asr_list: list) -> str:
-        context_caption = "\n".join(caption_list)
-        asr_text = "\n".join(asr_list)
+        timeline = format_timeline(caption_list, asr_list)
         chat_context = self.client_memory.search.documents(
             q= query,
             container_tags = ["Previous_Chat"],
@@ -27,12 +50,11 @@ class LLMService:
         parser = StrOutputParser()
         prompt = PromptTemplate(
             template = LLM_QUERY_PROMPT,
-            input_variables = ["context_frame", "context_audio", "previous_chat","query"]
+            input_variables = ["timeline", "previous_chat","query"]
         )
         chain = prompt | self.llm | parser
         result = await chain.ainvoke({
-            "context_frame": context_caption,
-            "context_audio": asr_text,
+            "timeline": timeline,
             "previous_chat": chat_context,
             "query" : query
         })

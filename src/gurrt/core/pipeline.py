@@ -96,7 +96,7 @@ class VideoRag:
             "--parallel", "4",
             "-c", "8192",
             "--port", "8080",
-            "-n","150"
+            "-n","320",
             #"--flash-attn"
         ]
 
@@ -106,14 +106,14 @@ class VideoRag:
             ui.step("Launching Gemma 3 captioning server on port 8080...")
             process_caption = subprocess.Popen(
                 cmd_caption_server, 
-                stdout=subprocess.DEVNULL, 
-                stderr=subprocess.DEVNULL
+                # stdout=subprocess.DEVNULL, 
+                # stderr=subprocess.DEVNULL
             )
             with ThreadPoolExecutor(max_workers=2) as executor:
                 future_server = executor.submit(wait_for_server)
                 future_video = executor.submit(process_video, video_path)
                 server_ready = future_server.result()
-                frame_PIL, timestamps_list, ids, fps = future_video.result()
+                frame_PIL, timestamps_list, end_times, ids, fps = future_video.result()
 
             if not server_ready:
                 raise TimeoutError("Captioning engine failed to initialize within VRAM allocation limits.")
@@ -125,6 +125,7 @@ class VideoRag:
                                                                         clip_processor=self.clip_processor,
                                                                         device=self.device,
                                                                         timestamps_list= timestamps_list,
+                                                                        end_times= end_times,
                                                                         ids= ids,
                                                                         fps= fps,
                                                                         video_path= video_path)              
@@ -165,7 +166,8 @@ class VideoRag:
                                 settings= self.settings)
         caption_list, asr_list = search.query_collection(self.device,
                                                         query,
-                                                        n_results=5)
+                                                        top_k=5,
+                                                        candidate_k=40)
         result = await self.llm.query_llm(query, 
                                         caption_list=caption_list, 
                                         asr_list=asr_list)

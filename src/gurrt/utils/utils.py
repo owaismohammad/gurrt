@@ -23,19 +23,47 @@ def audio_extraction(path: Path, settings: Settings):
     ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
     return audio_file
 
-def audio_to_text(audio_path, model, beam_size : int = 5) -> str:
+# def audio_to_text(audio_path, model, beam_size : int = 5) -> str:
+#     segments, info = model.transcribe(audio_path, batch_size=8, vad_filter=True)
+#     segments = list(segments)
+#     text = "".join(segment.text for segment in segments)
+#     return text
+# def chunk_text(text):
+#     text_splitter = RecursiveCharacterTextSplitter(
+#         chunk_size = 300,
+#         chunk_overlap = 40
+#     )
+#     chunked_text = text_splitter.split_text(text=text)
+#     return chunked_text
+def audio_to_segments(audio_path, model, beam_size: int = 1):
+    """Transcribe and keep per-segment timing instead of collapsing to one string."""
     segments, info = model.transcribe(audio_path, batch_size=8, vad_filter=True)
-    segments = list(segments)
-    text = "".join(segment.text for segment in segments)
-    return text
-def chunk_text(text):
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size = 300,
-        chunk_overlap = 40
-    )
-    chunked_text = text_splitter.split_text(text=text)
-    return chunked_text
+    return [(seg.start, seg.end, seg.text) for seg in segments]
 
+
+def chunk_segments(segments, max_chars: int = 1000, overlap_segments: int = 1):
+    """Group whisper segments into chunks that carry a start/end timestamp.
+
+    Overlap is measured in segments rather than characters so chunks never
+    split mid-sentence.
+    """
+    chunks, buf = [], []
+    for seg in segments:
+        buf.append(seg)
+        if sum(len(s[2]) for s in buf) >= max_chars:
+            chunks.append({
+                "text": "".join(s[2] for s in buf).strip(),
+                "start_sec": buf[0][0],
+                "end_sec": buf[-1][1],
+            })
+            buf = buf[-overlap_segments:] if overlap_segments else []
+    if buf:
+        chunks.append({
+            "text": "".join(s[2] for s in buf).strip(),
+            "start_sec": buf[0][0],
+            "end_sec": buf[-1][1],
+        })
+    return chunks
 def generate_captions_in_batches(batch_of_frames, 
                                  clip_model, 
                                  clip_processor, 
@@ -164,13 +192,20 @@ def batched_captioning_blip(frame_list: list,
     return caption_list, embedding_list
 
 def caption_frame_collection(results_reranked: Dict[str, Any]) -> list:
-    caption_list = []
-    metadatas = results_reranked["metadatas"][0]
-    for i, metadata in enumerate(metadatas):
-        if metadata["caption"]:
-            caption_list.append(metadata["caption"])
-                
-    return caption_list
+    """Return caption records with their timing, not bare strings.
+
+    The timestamps are what let the caller interleave frames with transcript
+    chunks into one chronological timeline, so they must survive this hop.
+    """
+    frames = []
+    for metadata in results_reranked["metadatas"][0]:
+        if metadata.get("caption"):
+            frames.append({
+                "caption": metadata["caption"],
+                "start_sec": metadata.get("start_sec"),
+                "end_sec": metadata.get("end_sec"),
+            })
+    return frames
 
 def generate_caption(frame,buffer, model: str):
     frame.save(buffer, format="JPEG")
@@ -279,7 +314,8 @@ def rerank_docs(query: str,
 def captioning_ollama(video_path: Path,
                                 frame_PIL,
                                 timestamps_list,
-                                fps, 
+                                end_times,
+                                fps,
                                 model_name: str,
                                 clip_model,
                                 clip_processor, 
@@ -306,13 +342,29 @@ def captioning_ollama(video_path: Path,
             embeddings.append(image_embedding)
             metadatas.append({
                 "caption": caption,
-                "timestamp_ms": timestamps_list[i],
+                "start_sec": timestamps_list[i],
+                "end_sec": end_times[i],
                 "fps": fps,
                 "source_path": str(video_path),
             })
             progress.advance(task_id)
     return embeddings, metadatas, ids
   
+def _resize_long_edge(img: Image.Image, target: int = 896) -> Image.Image:
+    """Scale so the long edge is `target`, preserving aspect ratio.
+
+    Gemma 3's vision encoder works at 896x896. Squashing a 16:9 slide into a
+    square throws away half the horizontal detail and distorts every glyph,
+    which is what makes on-screen text unreadable to the captioner. Never
+    upscale — that only adds interpolation noise.
+    """
+    w, h = img.size
+    scale = target / max(w, h)
+    if scale >= 1:
+        return img
+    return img.resize((round(w * scale), round(h * scale)), Image.Resampling.LANCZOS)
+
+
 def temporal_persistence_filter(video_path: Path,
                                 fps_selected: int = 2,
                                 stable_fps: float = 0.5,
@@ -448,11 +500,17 @@ def temporal_persistence_filter(video_path: Path,
         cap.set(cv2.CAP_PROP_POS_MSEC, ts * 1000)
         ret, frame = cap.read()
         if ret:
-            frame_PIL.append(Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)).resize((512, 512), Image.Resampling.BICUBIC))
+            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            frame_PIL.append(_resize_long_edge(Image.fromarray(rgb)))
             valid_timestamps.append(ts)
     cap.release()
+    # ids = [f"{video_path}:{t}:Persistence_Filter" for t in valid_timestamps]
+    # ui.info(f"Selected {len(frame_PIL)} keyframes from {total_frames} total frames")
+    # return frame_PIL, valid_timestamps, ids, fps
+    end_times = valid_timestamps[1:] + [duration_sec]
+
     ids = [f"{video_path}:{t}:Persistence_Filter" for t in valid_timestamps]
     ui.info(f"Selected {len(frame_PIL)} keyframes from {total_frames} total frames")
-    return frame_PIL, valid_timestamps, ids, fps
+    return frame_PIL, valid_timestamps, end_times, ids, fps
 
    

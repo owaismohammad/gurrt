@@ -51,7 +51,7 @@ class LlamaServerManager:
         
         self.server_bin = self.bin_dir / ("llama-server.exe" if self.is_windows else "llama-server")
         self.hf_repo = "unsloth/gemma-3-4b-it-GGUF"
-        self.model_filename = "gemma-3-4b-it-Q4_0.gguf"
+        self.model_filename = "gemma-3-4b-it-Q4_K_M.gguf"
         self.mmproj_filename = "mmproj-F16.gguf"
         
         self.llm_path = self.models_dir / self.model_filename

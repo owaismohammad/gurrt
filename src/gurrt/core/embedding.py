@@ -17,7 +17,7 @@ def frame_detection(video_path: Path,
                     clip_processor, 
                     device):
     
-    frame_PIL, timestamps_list, ids, fps = temporal_persistence_filter(video_path= video_path)
+    frame_PIL, timestamps_list, end_times, ids, fps = temporal_persistence_filter(video_path= video_path)
     if flag :
         batch_size=4
     else:
@@ -33,7 +33,8 @@ def frame_detection(video_path: Path,
     metadatas = [
             {
             "caption": caption_list[i],
-            "timestamp_ms": timestamps_list[i],
+            "start_sec": timestamps_list[i],
+            "end_sec": end_times[i],
             "fps": fps,
             "source_path": str(video_path)
             }
@@ -47,7 +48,7 @@ def frame_detection_blip(video_path: Path,
                     clip_processor, 
                     device):
     
-    frame_PIL, timestamps_list, ids, fps = temporal_persistence_filter(video_path= video_path)
+    frame_PIL, timestamps_list, end_times, ids, fps = temporal_persistence_filter(video_path= video_path)
     blip_model, blip_processor = models.get_blip()    
     caption_list, embeddings_list = batched_captioning_blip(frame_list= frame_PIL, 
                                                     batch_size=8, 
@@ -59,7 +60,8 @@ def frame_detection_blip(video_path: Path,
     metadatas = [
             {
             "caption": caption_list[i],
-            "timestamp_ms": timestamps_list[i],
+            "start_sec": timestamps_list[i],
+            "end_sec": end_times[i],
             "fps": fps,
             "source_path": str(video_path)
             }
@@ -70,6 +72,7 @@ def frame_detection_blip(video_path: Path,
 def captioning_and_embedding_llama_server(
     frame_PIL,
     timestamps_list,
+    end_times,
     ids,
     fps,
     video_path,
@@ -89,51 +92,59 @@ def captioning_and_embedding_llama_server(
         return [], [], []
     end_time = time.time()
     ui.info(f"Captioning done in {end_time - start_time:.1f}s — extracting embeddings...")
-    caption_list = [node["text"] for node in captioned_nodes]
 
-    metadatas = [
-        {
-            "caption": caption_list[i],
-            "timestamp_ms": timestamps_list[i],
-            "fps": fps,
-            "source_path": str(video_path),
-        }
-        for i in range(len(caption_list))
-    ]
+    # Corrupt frames are skipped by the captioner and CLIP can fail on any
+    # single frame, so ids/embeddings/metadatas are built together off the
+    # frame's own index. Building them from separate loops lets one skip
+    # shift every caption onto the wrong timestamp.
+    caption_by_index = {node["index"]: node["text"] for node in captioned_nodes}
 
     embeddings = []
+    metadatas = []
+    final_ids = []
     start_time = time.time()
     with ui.make_progress() as progress:
-        task_id = progress.add_task("  Extracting CLIP embeddings", total=len(frame_PIL))
-        for i, frame in enumerate(frame_PIL):
+        task_id = progress.add_task("  Extracting CLIP embeddings", total=len(caption_by_index))
+        for i in sorted(caption_by_index):
             try:
-                inputs = clip_processor(images=frame, return_tensors="pt").to(device)
+                inputs = clip_processor(images=frame_PIL[i], return_tensors="pt").to(device)
                 with torch.no_grad():
                     outputs = clip_model.get_image_features(**inputs)
                 image_embedding = outputs.pooler_output
                 image_embedding = image_embedding / image_embedding.norm(dim=-1, keepdim=True)
                 image_embedding = image_embedding.squeeze(0).cpu().numpy().tolist()
-                embeddings.append(image_embedding)
             except Exception as e:
                 ui.error(f"CLIP embedding failed on frame {i}: {e}")
-            finally:
                 progress.advance(task_id)
+                continue
+
+            embeddings.append(image_embedding)
+            metadatas.append({
+                "caption": caption_by_index[i],
+                "start_sec": timestamps_list[i],
+                "end_sec": end_times[i],
+                "fps": fps,
+                "source_path": str(video_path),
+            })
+            final_ids.append(ids[i])
+            progress.advance(task_id)
     end_time = time.time()
     ui.info(f"CLIP embeddings done in {end_time - start_time:.1f}s")
-    return embeddings, metadatas, ids
+    return embeddings, metadatas, final_ids
 
 def frame_detection_ollama(video_path: Path,
                             clip_model, 
                             clip_processor, 
                             model_name:str,
                             device):
-    frame_PIL, timestamps_list, ids, fps = temporal_persistence_filter(video_path= video_path)
+    frame_PIL, timestamps_list, end_times, ids, fps = temporal_persistence_filter(video_path= video_path)
     embeddings, metadatas, ids =  captioning_ollama(video_path= video_path,
                                                     clip_model= clip_model,
                                                     clip_processor= clip_processor,
                                                     model_name= model_name,
                                                     frame_PIL= frame_PIL,
                                                     timestamps_list = timestamps_list,
-                                                    fps = fps, 
+                                                    end_times = end_times,
+                                                    fps = fps,
                                                     device= device)
     return embeddings, metadatas, ids

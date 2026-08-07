@@ -812,13 +812,12 @@ wheels = [
 
 [[package]]
 name = "gurrt"
-version = "1.0.5"
+version = "2.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "accelerate" },
     { name = "aiohttp" },
     { name = "chromadb" },
-    { name = "fastapi" },
     { name = "faster-whisper" },
     { name = "imageio-ffmpeg" },
     { name = "langchain" },
@@ -826,7 +825,6 @@ dependencies = [
     { name = "langchain-text-splitters" },
     { name = "num2words" },
     { name = "ollama" },
-    { name = "opencv-python" },
     { name = "opencv-python-headless" },
     { name = "pillow" },
     { name = "platformdirs" },
@@ -834,12 +832,19 @@ dependencies = [
     { name = "pydantic" },
     { name = "sentence-transformers" },
     { name = "supermemory" },
-    { name = "torch" },
-    { name = "torchaudio" },
-    { name = "torchvision" },
     { name = "tqdm" },
     { name = "transformers" },
     { name = "typer" },
+]
+
+[package.optional-dependencies]
+cuda = [
+    { name = "torch" },
+    { name = "torchaudio" },
+    { name = "torchvision" },
+]
+server = [
+    { name = "fastapi" },
 ]
 
 [package.dev-dependencies]
@@ -853,7 +858,7 @@ requires-dist = [
     { name = "accelerate", specifier = ">=1.12.0" },
     { name = "aiohttp", specifier = ">=3.14.1" },
     { name = "chromadb", specifier = ">=1.4.1" },
-    { name = "fastapi", specifier = ">=0.128.7" },
+    { name = "fastapi", marker = "extra == 'server'", specifier = ">=0.128.7" },
     { name = "faster-whisper", specifier = ">=1.2.1" },
     { name = "imageio-ffmpeg", specifier = ">=0.6.0" },
     { name = "langchain", specifier = ">=1.2.9" },
@@ -861,7 +866,6 @@ requires-dist = [
     { name = "langchain-text-splitters", specifier = ">=1.1.0" },
     { name = "num2words", specifier = ">=0.5.14" },
     { name = "ollama", specifier = ">=0.6.1" },
-    { name = "opencv-python", specifier = ">=4.13.0.92" },
     { name = "opencv-python-headless", specifier = ">=4.13.0.92" },
     { name = "pillow", specifier = ">=12.1.0" },
     { name = "platformdirs", specifier = ">=4.5.1" },
@@ -869,13 +873,14 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.12.5" },
     { name = "sentence-transformers", specifier = ">=5.2.2" },
     { name = "supermemory", specifier = ">=3.24.0" },
-    { name = "torch", index = "https://download.pytorch.org/whl/cu121" },
-    { name = "torchaudio", index = "https://download.pytorch.org/whl/cu121" },
-    { name = "torchvision", index = "https://download.pytorch.org/whl/cu121" },
+    { name = "torch", marker = "extra == 'cuda'", index = "https://download.pytorch.org/whl/cu121" },
+    { name = "torchaudio", marker = "extra == 'cuda'", index = "https://download.pytorch.org/whl/cu121" },
+    { name = "torchvision", marker = "extra == 'cuda'", index = "https://download.pytorch.org/whl/cu121" },
     { name = "tqdm", specifier = ">=4.67.3" },
     { name = "transformers", specifier = ">=5.1.0" },
     { name = "typer", specifier = ">=0.21.1" },
 ]
+provides-extras = ["server", "cuda"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -1893,24 +1898,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/0f/da/4522b199c12db7c5b46aaf265ee0d741abe65ea912f6c0aaa2cc18a4654d/onnxruntime-1.24.1-cp314-cp314-win_amd64.whl", hash = "sha256:ea4942104805e868f3ddddfa1fbb58b04503a534d489ab2d1452bbfa345c78c2", size = 12795556, upload-time = "2026-02-05T17:32:11.886Z" },
     { url = "https://files.pythonhosted.org/packages/a1/53/3b8969417276b061ff04502ccdca9db4652d397abbeb06c9f6ae05cec9ca/onnxruntime-1.24.1-cp314-cp314t-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:ea8963a99e0f10489acdf00ef3383c3232b7e44aa497b063c63be140530d9f85", size = 15025434, upload-time = "2026-02-05T17:31:06.942Z" },
     { url = "https://files.pythonhosted.org/packages/ab/a2/cfcf009eb38d90cc628c087b6506b3dfe1263387f3cbbf8d272af4fef957/onnxruntime-1.24.1-cp314-cp314t-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:34488aa760fb5c2e6d06a7ca9241124eb914a6a06f70936a14c669d1b3df9598", size = 17099815, upload-time = "2026-02-05T17:31:43.092Z" },
-]
-
-[[package]]
-name = "opencv-python"
-version = "4.13.0.92"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "numpy" },
-]
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/fc/6f/5a28fef4c4a382be06afe3938c64cc168223016fa520c5abaf37e8862aa5/opencv_python-4.13.0.92-cp37-abi3-macosx_13_0_arm64.whl", hash = "sha256:caf60c071ec391ba51ed00a4a920f996d0b64e3e46068aac1f646b5de0326a19", size = 46247052, upload-time = "2026-02-05T07:01:25.046Z" },
-    { url = "https://files.pythonhosted.org/packages/08/ac/6c98c44c650b8114a0fb901691351cfb3956d502e8e9b5cd27f4ee7fbf2f/opencv_python-4.13.0.92-cp37-abi3-macosx_14_0_x86_64.whl", hash = "sha256:5868a8c028a0b37561579bfb8ac1875babdc69546d236249fff296a8c010ccf9", size = 32568781, upload-time = "2026-02-05T07:01:41.379Z" },
-    { url = "https://files.pythonhosted.org/packages/3e/51/82fed528b45173bf629fa44effb76dff8bc9f4eeaee759038362dfa60237/opencv_python-4.13.0.92-cp37-abi3-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:0bc2596e68f972ca452d80f444bc404e08807d021fbba40df26b61b18e01838a", size = 47685527, upload-time = "2026-02-05T06:59:11.24Z" },
-    { url = "https://files.pythonhosted.org/packages/db/07/90b34a8e2cf9c50fe8ed25cac9011cde0676b4d9d9c973751ac7616223a2/opencv_python-4.13.0.92-cp37-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:402033cddf9d294693094de5ef532339f14ce821da3ad7df7c9f6e8316da32cf", size = 70460872, upload-time = "2026-02-05T06:59:19.162Z" },
-    { url = "https://files.pythonhosted.org/packages/02/6d/7a9cc719b3eaf4377b9c2e3edeb7ed3a81de41f96421510c0a169ca3cfd4/opencv_python-4.13.0.92-cp37-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:bccaabf9eb7f897ca61880ce2869dcd9b25b72129c28478e7f2a5e8dee945616", size = 46708208, upload-time = "2026-02-05T06:59:15.419Z" },
-    { url = "https://files.pythonhosted.org/packages/fd/55/b3b49a1b97aabcfbbd6c7326df9cb0b6fa0c0aefa8e89d500939e04aa229/opencv_python-4.13.0.92-cp37-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:620d602b8f7d8b8dab5f4b99c6eb353e78d3fb8b0f53db1bd258bb1aa001c1d5", size = 72927042, upload-time = "2026-02-05T06:59:23.389Z" },
-    { url = "https://files.pythonhosted.org/packages/fb/17/de5458312bcb07ddf434d7bfcb24bb52c59635ad58c6e7c751b48949b009/opencv_python-4.13.0.92-cp37-abi3-win32.whl", hash = "sha256:372fe164a3148ac1ca51e5f3ad0541a4a276452273f503441d718fab9c5e5f59", size = 30932638, upload-time = "2026-02-05T07:02:14.98Z" },
-    { url = "https://files.pythonhosted.org/packages/e9/a5/1be1516390333ff9be3a9cb648c9f33df79d5096e5884b5df71a588af463/opencv_python-4.13.0.92-cp37-abi3-win_amd64.whl", hash = "sha256:423d934c9fafb91aad38edf26efb46da91ffbc05f3f59c4b0c72e699720706f5", size = 40212062, upload-time = "2026-02-05T07:02:12.724Z" },
 ]
 
 [[package]]
