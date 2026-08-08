@@ -14,6 +14,7 @@ import re
 from math import ceil
 from datetime import datetime, timezone
 from pathlib import Path
+from uuid import uuid4
 
 from gurrt.cli import ui
 
@@ -30,7 +31,14 @@ def estimate_tokens(text: str) -> int:
 
 
 def _utc_stamp() -> str:
-    return datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S-%f")
+    """Sortable timestamp plus a random suffix.
+
+    Windows' clock can be coarser than the microseconds %f implies, so two
+    quick queries could land on the same stamp and one would overwrite the
+    other's record. The suffix makes every query's log its own file.
+    """
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S-%f")
+    return f"{stamp}-{uuid4().hex[:6]}"
 
 
 def _video_dir(settings, video_path) -> Path:
