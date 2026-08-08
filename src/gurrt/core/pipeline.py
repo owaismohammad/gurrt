@@ -12,7 +12,7 @@ from gurrt.core.embedding import (
     captioning_and_embedding_llama_server)
 
 from gurrt.utils.llama_server_utils import process_video,wait_for_server
-from gurrt.core.llm import LLMService
+from gurrt.core.llm import LLMService, format_timeline
 from gurrt.core.models import ModelManager
 from gurrt.core.search import SearchService
 from gurrt.core.debuglog import log_captions, log_transcript
@@ -166,15 +166,14 @@ class VideoRag:
                                 reranker= reranker,
                                 vectordb= self.vectordb,
                                 settings= self.settings)
-        timeline, used_tokens, stats = search.build_context(
+        caption_list, asr_list, stats = search.build_context(
             self.device,
             query,
-            token_budget=self.settings.CONTEXT_TOKEN_BUDGET,
-            pad_sec=self.settings.WINDOW_PAD_SEC,
-            top_k=5,
-            candidate_k=40)
-        ui.info(f"Context: ~{used_tokens} tokens of "
-                f"{self.settings.CONTEXT_TOKEN_BUDGET} budget")
+            top_k=self.settings.ASK_TOP_K,
+            candidate_k=self.settings.ASK_CANDIDATE_K)
+        timeline = format_timeline(caption_list, asr_list)
+        ui.info(f"Context: {len(caption_list)} frames + {len(asr_list)} "
+                f"transcript chunks")
         if stats["low_fidelity_visual"]:
             ui.warn(f"Captions from {', '.join(stats['captioners'])} are "
                     "low-fidelity — weighting the transcript instead")

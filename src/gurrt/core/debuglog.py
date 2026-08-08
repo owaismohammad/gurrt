@@ -11,11 +11,22 @@ logging failure must never take down an index or a query.
 import json
 import hashlib
 import re
+from math import ceil
 from datetime import datetime, timezone
 from pathlib import Path
 
-from gurrt.core.context import estimate_tokens
 from gurrt.cli import ui
+
+
+def estimate_tokens(text: str) -> int:
+    """Rough token count for the log's own statistics.
+
+    Deliberately pessimistic at ~3.5 chars/token: equations and code tokenize
+    worse than prose. Reporting only - nothing is trimmed against it.
+    """
+    if not text:
+        return 0
+    return max(1, ceil(len(text) / 3.5))
 
 
 def _utc_stamp() -> str:
@@ -153,8 +164,7 @@ def log_transcript(settings, video_path, chunked_text, metadatas, ids) -> None:
 
 
 def log_query(settings, query, system_prompt, timeline, previous_chat,
-              rendered_human, answer, low_fidelity_visual=False,
-              max_output_tokens=None) -> None:
+              rendered_human, answer, low_fidelity_visual=False) -> None:
     """Exactly what was sent to the LLM for one question, and what came back."""
     try:
         d = settings.LOGS_DIR / "queries"
@@ -176,10 +186,9 @@ def log_query(settings, query, system_prompt, timeline, previous_chat,
             "query": query,
             "model": settings.LLM_MODEL,
             "low_fidelity_visual": low_fidelity_visual,
-            "budgets": {
-                "context_token_budget": settings.CONTEXT_TOKEN_BUDGET,
-                "chat_token_budget": settings.CHAT_TOKEN_BUDGET,
-                "window_pad_sec": settings.WINDOW_PAD_SEC,
+            "retrieval": {
+                "top_k": getattr(settings, "ASK_TOP_K", None),
+                "candidate_k": getattr(settings, "ASK_CANDIDATE_K", None),
             },
             "usage": {
                 "timeline_tokens": timeline_tokens,
@@ -187,14 +196,6 @@ def log_query(settings, query, system_prompt, timeline, previous_chat,
                 "system_tokens": system_tokens,
                 "human_message_tokens": human_tokens,
                 "total_input_tokens": system_tokens + human_tokens,
-                "max_output_tokens": max_output_tokens,
-                # What Groq bills against the per-minute cap.
-                "tpm_charged_estimate": (
-                    system_tokens + human_tokens + (max_output_tokens or 0)),
-                "tpm_limit": getattr(settings, "TPM_LIMIT", None),
-                "timeline_budget_used_pct": (
-                    round(100 * timeline_tokens / settings.CONTEXT_TOKEN_BUDGET, 1)
-                    if settings.CONTEXT_TOKEN_BUDGET else None),
                 "shown_lines": shown,
                 "said_lines": said,
             },

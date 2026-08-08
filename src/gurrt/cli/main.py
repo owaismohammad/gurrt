@@ -206,7 +206,7 @@ def _load_session() -> tuple[Optional[VideoRag], Optional[str]]:
 # ── Slash command completion ──────────────────────────────────────────────────
 
 _SLASH_COMMANDS = [
-    ("init",            "Save API keys (Groq + Supermemory)"),
+    ("init",            "Save API keys (OpenRouter + Supermemory)"),
     ("init-llama",      "Download Gemma 3 + llama-server binary"),
     ("models-download", "Download all AI models locally"),
     ("index",           "Index with smolvlm or blip2              /index <path> <model>"),
@@ -244,7 +244,7 @@ def _show_quick_start() -> None:
         (
             "1",
             "/init",
-            "Save your API keys (Groq + Supermemory)",
+            "Save your API keys (OpenRouter + Supermemory)",
             "Run once — required for cloud LLM inference",
         ),
         (
@@ -318,16 +318,16 @@ def _show_quick_start() -> None:
 # ── Shared command logic ──────────────────────────────────────────────────────
 
 def _do_init() -> None:
-    groq_link = "https://console.groq.com/docs/models"
+    openrouter_link = "https://openrouter.ai/keys"
     supermemory_link = "https://supermemory.ai/docs/integrations/supermemory-sdk"
     config_file = config_dir / "config.json"
 
     console.print(Panel(
-        f"[info]Get your Groq API Key at:[/info]\n[primary]{groq_link}[/primary]",
-        title="[primary]Groq[/primary]",
+        f"[info]Get your OpenRouter API Key at:[/info]\n[primary]{openrouter_link}[/primary]",
+        title="[primary]OpenRouter[/primary]",
         border_style=ui.BORDER_PRIMARY,
     ))
-    groq = Prompt.ask("[info]Groq API Key[/info]", password=True)
+    openrouter = Prompt.ask("[info]OpenRouter API Key[/info]", password=True)
 
     console.print(Panel(
         f"[info]Get your Supermemory API Key at:[/info]\n[primary]{supermemory_link}[/primary]",
@@ -348,7 +348,7 @@ def _do_init() -> None:
     try:
         _save_ollama_flag(has_ollama)
         with open(config_file, "w") as f:
-            json.dump({"GROQ_API_KEY": groq, "SUPERMEMORY_API_KEY": supermemory}, f, indent=2)
+            json.dump({"OPENROUTER_API_KEY": openrouter, "SUPERMEMORY_API_KEY": supermemory}, f, indent=2)
     except Exception as e:
         console.print(Panel(
             f"[error]{e}[/error]",
@@ -953,7 +953,7 @@ def main(ctx: typer.Context) -> None:
 
 @app.command()
 def init():
-    """Save your Groq and Supermemory API keys."""
+    """Save your OpenRouter and Supermemory API keys."""
     _do_init()
 
 

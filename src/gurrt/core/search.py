@@ -2,7 +2,6 @@ from gurrt.config.config import Settings
 from gurrt.utils.utils import (rerank, rerank_docs, caption_frame_collection,
                                embed_texts)
 from gurrt.core.vectordb import VectorDB
-from gurrt.core.context import build_timeline
 
 class SearchService:
     def __init__(self,
@@ -64,14 +63,12 @@ class SearchService:
         ]
         return captions_list, asr_list
 
-    def build_context(self, device, query: str, token_budget: int,
-                      pad_sec: float, top_k: int = 5, candidate_k: int = 40):
-        """Retrieve, expand each hit into its surrounding seconds, and cap.
+    def build_context(self, device, query: str, top_k: int = 5,
+                      candidate_k: int = 40):
+        """Retrieve the hits for a question and report what produced them.
 
-        Vector search returns moments, not narrative: five hits can land at
-        04:00, 04:00, 19:00 and 41:00 with nothing joining them. Expanding
-        each into a window and merging is what turns matches back into
-        something readable.
+        Everything retrieved is passed on as-is. To send the model more or
+        less, change top_k rather than trimming afterwards.
         """
         captions_list, asr_list = self.query_collection(
             device, query, top_k=top_k, candidate_k=candidate_k)
@@ -79,15 +76,10 @@ class SearchService:
         captioners = {f.get("captioner") for f in captions_list if f.get("captioner")}
         low_fidelity = bool(captioners) and captioners.issubset(
             self.settings.LOW_FIDELITY_CAPTIONERS)
-        penalty = self.settings.VISUAL_ANCHOR_PENALTY if low_fidelity else 0.0
 
-        timeline, used = build_timeline(captions_list + asr_list, self.db,
-                                        token_budget, pad_sec,
-                                        visual_penalty=penalty)
-        return timeline, used, {
+        return captions_list, asr_list, {
             "captioners": sorted(captioners),
             "low_fidelity_visual": low_fidelity,
-            "visual_anchor_penalty": penalty,
         }
 
 

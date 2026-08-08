@@ -13,38 +13,36 @@ class Settings:
         if config_file.exists():
             with open(config_file) as f:
                 cfg = json.load(f)
-            self.GROQ_API_KEY = cfg.get('GROQ_API_KEY')
+            self.OPENROUTER_API_KEY = cfg.get("OPENROUTER_API_KEY")
             self.SUPERMEMORY_API_KEY = cfg.get("SUPERMEMORY_API_KEY")
         else:
             raise RuntimeError("API Keys not found")
+
+        if not self.OPENROUTER_API_KEY:
+            raise RuntimeError(
+                "OPENROUTER_API_KEY not found - run /init to save it."
+            )
         self.CLIP_MODEL = "openai/clip-vit-base-patch32"
         # Every collection is keyed by text (captions and transcript alike), so
         # one embedder serves both the index and the query side.
         self.TEXT_EMBED_MODEL = "BAAI/bge-small-en-v1.5"
-        self.LLM_MODEL="llama-3.1-8b-instant"
         self.RERANKER_MODEL = 'cross-encoder/ms-marco-MiniLM-L-6-v2'
         self.BLIP_MODEL = "Salesforce/blip-image-captioning-large"
-        # Context budget. The model's window is far larger than these numbers,
-        # but an 8B model stops attending well long before it runs out of room:
-        # a wall of loosely-related context buries the query instead of
-        # answering it. Keep the retrieved material small and dense.
-        self.CONTEXT_TOKEN_BUDGET = 2200   # the lecture timeline
-        self.CHAT_TOKEN_BUDGET = 400       # prior conversation
-        self.WINDOW_PAD_SEC = 30.0         # context pulled either side of a hit
 
-        # Groq bills input + reserved output against the same per-minute
-        # allowance, so max_tokens is spent whether or not the answer uses it.
-        # Reserving 4096 for a two-paragraph answer burned two thirds of the
-        # free tier's 6000 TPM on nothing.
-        self.TPM_LIMIT = 6000              # free tier; raise if you upgrade
-        self.TPM_SAFETY_MARGIN = 300       # our estimate vs Groq's real count
-        self.MAX_OUTPUT_TOKENS = 1200      # ample for a detailed answer
-        self.MIN_OUTPUT_TOKENS = 400       # never squeeze below a usable reply
+        # OpenRouter. Retrieved context is sent as-is; the only levers on how
+        # much goes to the model are how many hits are kept below.
+        self.OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+        self.LLM_MODEL = "google/gemma-4-26b-a4b-it:free"
+        self.LLM_TIMEOUT_SEC = 180
+        self.MAX_OUTPUT_TOKENS = 2048
+
+        self.ASK_TOP_K = 5           # hits kept after reranking
+        self.ASK_CANDIDATE_K = 40    # hits fetched before reranking
 
         # BLIP and SmolVLM describe the room rather than the board: they cannot
         # read slide text, so their captions are near-useless for lecture
-        # content. When an index was built with one of them, spend the budget
-        # on speech instead and tell the model not to trust the visuals.
+        # content. When an index was built with one of them, the prompt tells
+        # the model to reason from speech rather than trust the visuals.
         self.LOW_FIDELITY_CAPTIONERS = {"blip2", "smolvlm"}
         # Subtracted from frame anchors' rerank scores, so audio windows win
         # the budget. Additive, not multiplicative: cross-encoder scores go
