@@ -5,6 +5,8 @@ a system and a user message, and going direct keeps the failure modes legible
 - an OpenRouter error message reaches the user verbatim instead of being
 wrapped in a provider abstraction.
 """
+import json
+
 import aiohttp
 
 
@@ -28,9 +30,12 @@ async def chat(settings, system_prompt: str, user_prompt: str) -> str:
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ],
-        "max_tokens": settings.MAX_OUTPUT_TOKENS,
         "temperature": 0.3,
     }
+    # Optional: omit it entirely and the model uses its own limit.
+    max_tokens = getattr(settings, "MAX_OUTPUT_TOKENS", None)
+    if max_tokens:
+        payload["max_tokens"] = max_tokens
 
     timeout = aiohttp.ClientTimeout(total=settings.LLM_TIMEOUT_SEC)
     async with aiohttp.ClientSession(timeout=timeout) as session:
@@ -41,10 +46,12 @@ async def chat(settings, system_prompt: str, user_prompt: str) -> str:
                     f"OpenRouter returned HTTP {resp.status} for "
                     f"{settings.LLM_MODEL}: {body[:500]}"
                 )
-            try:
-                data = await resp.json()
-            except Exception:
-                raise OpenRouterError(f"Unreadable response: {body[:500]}")
+    # Parse the text already read, rather than resp.json(), which re-reads and
+    # rejects anything not labelled application/json.
+    try:
+        data = json.loads(body)
+    except ValueError:
+        raise OpenRouterError(f"Unreadable response: {body[:500]}")
 
     # Free models can answer 200 with an error object rather than choices.
     if "error" in data and not data.get("choices"):

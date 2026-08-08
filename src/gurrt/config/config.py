@@ -34,7 +34,6 @@ class Settings:
         self.OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
         self.LLM_MODEL = "google/gemma-4-26b-a4b-it:free"
         self.LLM_TIMEOUT_SEC = 180
-        self.MAX_OUTPUT_TOKENS = 2048
 
         self.ASK_TOP_K = 5           # hits kept after reranking
         self.ASK_CANDIDATE_K = 40    # hits fetched before reranking
@@ -44,10 +43,6 @@ class Settings:
         # content. When an index was built with one of them, the prompt tells
         # the model to reason from speech rather than trust the visuals.
         self.LOW_FIDELITY_CAPTIONERS = {"blip2", "smolvlm"}
-        # Subtracted from frame anchors' rerank scores, so audio windows win
-        # the budget. Additive, not multiplicative: cross-encoder scores go
-        # negative, and scaling a negative score makes it bigger.
-        self.VISUAL_ANCHOR_PENALTY = 3.0
 
         self.MODEL_CACHE_DIR = home / "models"
         self.CHROMA_DB_PATH= home / "chroma_db"
