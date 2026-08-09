@@ -33,9 +33,9 @@ async def chat(settings, system_prompt: str, user_prompt: str) -> str:
         "temperature": 0.3,
     }
     # Optional: omit it entirely and the model uses its own limit.
-    max_tokens = getattr(settings, "MAX_OUTPUT_TOKENS", None)
-    if max_tokens:
-        payload["max_tokens"] = max_tokens
+    # max_tokens = getattr(settings, "MAX_OUTPUT_TOKENS", None)
+    # if max_tokens:
+    #     payload["max_tokens"] = max_tokens
 
     timeout = aiohttp.ClientTimeout(total=settings.LLM_TIMEOUT_SEC)
     async with aiohttp.ClientSession(timeout=timeout) as session:

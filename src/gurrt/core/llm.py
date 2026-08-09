@@ -52,7 +52,7 @@ class LLMService:
             limit=3,
         )
         previous_chat = format_prior_chat(chat_context)
-
+        print(previous_chat)
         system_prompt = LLM_SYSTEM_PROMPT
         if low_fidelity_visual:
             system_prompt += LOW_FIDELITY_VISUAL_NOTE

@@ -10,7 +10,7 @@ Lines close together in time describe the same thing, so use a nearby SHOWN line
 to resolve vague speech like "this term here".
 
 FIRST, decide whether the excerpt actually bears on the doubt. It was picked by
-similarity search,   not by understanding, so it may be the right passage, only
+similarity search, not by understanding, so it may be the right passage, only
 loosely related, or about something else entirely. Then answer accordingly:
 
 - If it covers the doubt: teach from it. Use the lecturer's own notation,
