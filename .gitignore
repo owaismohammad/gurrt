@@ -23,5 +23,7 @@ bin/
 models/
 captioned_nodes_debug.json
 REFACTOR_SESSION.md
+automation
+automation_out
 benchmarking
 automation_out
