@@ -333,7 +333,8 @@ def temporal_persistence_filter(video_path: Path,
                                 hash_threshold: int = 12,
                                 persistence_window_sec: float = 5.0,
                                 vote_ratio: float = 0.6,
-                                min_interval_sec: float = 2.0):
+                                # min_interval_sec: float = 2.0
+                                ):
     """
     Two-pass pipeline:
 
@@ -443,8 +444,9 @@ def temporal_persistence_filter(video_path: Path,
                 elapsed = timestamp - window_start
                 if elapsed >= persistence_window_sec:
                     ratio = sum(d > hash_threshold for d in window_distances) / len(window_distances)
-                    time_ok = candidate[0] - last_selected_sec >= min_interval_sec
-                    if ratio > vote_ratio and time_ok:
+                    # time_ok = candidate[0] - last_selected_sec >= min_interval_sec
+                    # if ratio > vote_ratio and time_ok:
+                    if ratio > vote_ratio:
                         cand_ts, cand_hash = candidate
                         confirmed_timestamps.append(cand_ts)
                         ref_hash = cand_hash
@@ -462,6 +464,9 @@ def temporal_persistence_filter(video_path: Path,
         cap.set(cv2.CAP_PROP_POS_MSEC, ts * 1000)
         ret, frame = cap.read()
         if ret:
+            gray = float((cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)).std())
+            if gray < 5.0:
+                continue
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             frame_PIL.append(_resize_long_edge(Image.fromarray(rgb)))
             valid_timestamps.append(ts)

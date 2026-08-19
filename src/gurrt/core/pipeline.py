@@ -27,11 +27,11 @@ class VideoRag:
     def __init__(self, reset:bool = False):
         self.reset =reset
         self.settings = Settings()
-        self.models = ModelManager(self.settings)
-        self.vectordb = VectorDB(str(self.settings.CHROMA_DB_PATH), reset=reset)
-        self.llm = LLMService(self.settings)
-        self.device = self.models.device
-        self.text_embedder = self.models.get_text_embedder()
+        # self.models = ModelManager(self.settings)
+        # self.vectordb = VectorDB(str(self.settings.CHROMA_DB_PATH), reset=reset)
+        # self.llm = LLMService(self.settings)
+        # self.device = self.models.device
+        # self.text_embedder = self.models.get_text_embedder()
 
     def index_video(self, video_path:Path, flag:bool):
         if self.reset:
@@ -51,22 +51,29 @@ class VideoRag:
         log_captions(self.settings, video_path, metadatas, ids)
         self.models.release_smol()
 
-    def index_video_blip(self, video_path:Path):
-        if self.reset:
-            try:
-                self.llm.delete()
-            except Exception:
-                pass
-        embeddings, metadatas, ids = frame_detection_blip(video_path= video_path,
-                                                    text_embedder=self.text_embedder,
-                                                    models = self.models,
-                                                    device = self.device,
-                                                    settings = self.settings)
-        self.vectordb.add_frames(ids=ids,
-                                embeddings=embeddings,
-                                metadata=metadatas)
-        log_captions(self.settings, video_path, metadatas, ids)
-        self.models.release_blip()
+    def index_video_blip(self, video_path:Path,
+                         out_dir: Path):
+        # if self.reset:
+        #     try:
+        #         self.llm.delete()
+        #     except Exception:
+        #         pass
+        frame_detection_blip(video_path= video_path,
+                            # text_embedder=self.text_embedder,
+                            # models = self.models,
+                            # device = self.device,
+                            # settings = self.settings,
+                            out_dir = out_dir)
+        # embeddings, metadatas, ids = frame_detection_blip(video_path= video_path,
+        #                                             text_embedder=self.text_embedder,
+        #                                             models = self.models,
+        #                                             device = self.device,
+        #                                             settings = self.settings)
+        # self.vectordb.add_frames(ids=ids,
+        #                         embeddings=embeddings,
+        #                         metadata=metadatas)
+        # log_captions(self.settings, video_path, metadatas, ids)
+        # self.models.release_blip()
 
     def index_video_ollama(self, video_path:Path, model_name: str):
         if self.reset:
