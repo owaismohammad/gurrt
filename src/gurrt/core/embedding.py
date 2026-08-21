@@ -11,6 +11,7 @@ from gurrt.utils.utils import (
 from gurrt.utils.llama_server_utils import batch_caption_frames
 from gurrt.core.debuglog import log_keyframes
 from automation.caption_bridge import export_keyframes, load_captions, reload_frames
+from gurrt.config.benchmark_config import VIDEO_PATH, OUTPUT_PATH, MANIFEST_PATH, CAPTION_PATH, DEFAULT_OUT
 
 
 def _build_records(caption_list, timestamps_list, end_times, ids, fps,
@@ -69,37 +70,37 @@ def frame_detection(video_path: Path,
 
 def frame_detection_blip(video_path: Path,
                          out_dir:Path,
-                    # models: ModelManager,
-                    # text_embedder,
-                    # device,
-                    # settings=None,
+                    models: ModelManager,
+                    text_embedder,
+                    device,
+                    settings=None,
                     ):
 
     # Before Captioning
-    frame_PIL, timestamps_list, end_times, ids, fps = temporal_persistence_filter(
-        video_path= video_path,
+    # frame_PIL, tim= video_path,
         # persistence_window_sec= 1.5,
         # hash_threshold= 15,
         # fps_selected= 2
-        )
-    manifest = export_keyframes(
-    frame_PIL, timestamps_list, end_times, ids,
-    out_dir=Path(out_dir),
-    fps=fps, video_path=video_path,
-)   
-    print(manifest)
+        # )
+#     manifest = exporestamps_list, end_times, ids, fps = temporal_persistence_filter(
+    #     video_patht_keyframes(
+#     frame_PIL, timestamps_list, end_times, ids,
+#     out_dir=Path(out_dir),
+#     fps=fps, video_path=video_path,
+# )   
+#     print(manifest)
 
     # After Captioning
     
-#     caption_list, timestamps_list, end_times, ids,fps = load_captions(
-#     Path(r"C:\Users\Owais\Downloads\tmp\keyframes_run1\manifest.json"),
-#     Path(r"C:\Users\Owais\Downloads\captions.json"),
-# )
-#     frame_PIL = reload_frames(Path("../tmp/keyframes_run1/manifest.json"))
+    caption_list, timestamps_list, end_times, ids,fps = load_captions( 
+    MANIFEST_PATH,  # Manifest path
+    CAPTION_PATH, # Captions path
+)
+    frame_PIL = reload_frames(MANIFEST_PATH) # Manifest path
 
-#     return _build_records(caption_list, timestamps_list, end_times, ids, fps,
-#                               video_path, text_embedder, captioner="blip2",
-#                               settings=settings, frame_PIL=frame_PIL)
+    return _build_records(caption_list, timestamps_list, end_times, ids, fps,
+                              video_path, text_embedder, captioner="blip2",
+                              settings=settings, frame_PIL=frame_PIL)
     # blip_model, blip_processor = models.get_blip()
     # caption_list = batched_captioning_blip(frame_list= frame_PIL,
     #                                                 batch_size=8,
