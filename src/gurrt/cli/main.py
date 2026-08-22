@@ -416,63 +416,65 @@ def _do_init_llama() -> None:
         return
 
     llama_server_manager.bin_dir.mkdir(parents=True, exist_ok=True)
+    # try:
+    #     req = urllib.request.Request(
+    #         llama_server_manager.llama_release_url, headers={"User-Agent": "Mozilla/5.0"}
+    #     )
+    #     with console.status("[info]Fetching latest llama-server release from GitHub...[/info]", spinner="dots"):
+    #         with urllib.request.urlopen(req) as response:
+    #             release_data = json.loads(response.read().decode())
+
+    #     download_url = None
+    #     for asset in release_data.get("assets", []):
+    #         name = asset.get("name", "").lower()
+    #         if "bin-win" in name and "cuda" in name and "cudart" not in name and name.endswith(".zip"):
+    #             download_url = asset.get("browser_download_url")
+    #             break
+
+    #     if not download_url:
+    #         for asset in release_data.get("assets", []):
+    #             name = asset.get("name", "").lower()
+    #             if "bin-win" in name and "cpu" in name and name.endswith(".zip"):
+    #                 download_url = asset.get("browser_download_url")
+    #                 break
+
+    #     zip_path = config_dir / "temp_server.zip"
+    #     filename = download_url.split('/')[-1]
+
+    #     stream_download(download_url, zip_path, f"  {filename}",
+    #                     headers={"User-Agent": "Mozilla/5.0"})
+
+    #     with console.status("[info]Extracting server binary...[/info]", spinner="dots"):
+    #         with zipfile.ZipFile(zip_path, "r") as zip_ref:
+    #             extracted_count = 0
+    #             for file_path in zip_ref.namelist():
+    #                 filename = os.path.basename(file_path)
+    #                 lowered = filename.lower()
+    #                 if not filename:
+    #                     continue
+    #                 if lowered in ["llama-server.exe", "llama-server"]:
+    #                     with open(llama_server_manager.server_bin, "wb") as f:
+    #                         f.write(zip_ref.read(file_path))
+    #                     extracted_count += 1
+    #                 elif lowered.endswith(".dll"):
+    #                     with open(llama_server_manager.bin_dir / filename, "wb") as f:
+    #                         f.write(zip_ref.read(file_path))
+    #                     extracted_count += 1
+
+    #             if extracted_count == 0:
+    #                 raise FileNotFoundError("Could not locate execution components inside the release archive.")
+
+    #     if os.path.exists(zip_path):
+    #         os.remove(zip_path)
+
+    #     ui.success("Server binary and dependencies installed.")
     try:
-        req = urllib.request.Request(
-            llama_server_manager.llama_release_url, headers={"User-Agent": "Mozilla/5.0"}
-        )
-        with console.status("[info]Fetching latest llama-server release from GitHub...[/info]", spinner="dots"):
-            with urllib.request.urlopen(req) as response:
-                release_data = json.loads(response.read().decode())
-
-        download_url = None
-        for asset in release_data.get("assets", []):
-            name = asset.get("name", "").lower()
-            if "bin-win" in name and "cuda" in name and "cudart" not in name and name.endswith(".zip"):
-                download_url = asset.get("browser_download_url")
-                break
-
-        if not download_url:
-            for asset in release_data.get("assets", []):
-                name = asset.get("name", "").lower()
-                if "bin-win" in name and "cpu" in name and name.endswith(".zip"):
-                    download_url = asset.get("browser_download_url")
-                    break
-
-        zip_path = config_dir / "temp_server.zip"
-        filename = download_url.split('/')[-1]
-
-        stream_download(download_url, zip_path, f"  {filename}",
-                        headers={"User-Agent": "Mozilla/5.0"})
-
-        with console.status("[info]Extracting server binary...[/info]", spinner="dots"):
-            with zipfile.ZipFile(zip_path, "r") as zip_ref:
-                extracted_count = 0
-                for file_path in zip_ref.namelist():
-                    filename = os.path.basename(file_path)
-                    lowered = filename.lower()
-                    if not filename:
-                        continue
-                    if lowered in ["llama-server.exe", "llama-server"]:
-                        with open(llama_server_manager.server_bin, "wb") as f:
-                            f.write(zip_ref.read(file_path))
-                        extracted_count += 1
-                    elif lowered.endswith(".dll"):
-                        with open(llama_server_manager.bin_dir / filename, "wb") as f:
-                            f.write(zip_ref.read(file_path))
-                        extracted_count += 1
-
-                if extracted_count == 0:
-                    raise FileNotFoundError("Could not locate execution components inside the release archive.")
-
-        if os.path.exists(zip_path):
-            os.remove(zip_path)
-
-        ui.success("Server binary and dependencies installed.")
+        pass
 
     except Exception as e:
         ui.error(f"Failed to download or extract server: {e}")
-        if "zip_path" in locals() and os.path.exists(zip_path):
-            os.remove(zip_path)
+        # if "zip_path" in locals() and os.path.exists(zip_path):
+        #     os.remove(zip_path)
 
 
 def _do_models_download() -> None:
