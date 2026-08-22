@@ -1,7 +1,10 @@
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+import os
+import sys
 import subprocess
 import requests
+from platformdirs import user_config_dir
 
 from gurrt.config.config import Settings
 from gurrt.core.asr import audio_extract_chunk_and_embed
@@ -100,7 +103,8 @@ class VideoRag:
                 self.llm.delete()
             except Exception:
                 pass
-        llama_server_manager = LlamaServerManager()        
+        config_dir = Path(user_config_dir("gurrt"))
+        llama_server_manager = LlamaServerManager(config_dir=config_dir)
         cmd_caption_server = [
             str(server_bin),
             "-m", str(llama_server_manager.llm_path),
@@ -115,11 +119,17 @@ class VideoRag:
 
         process_caption = None
 
+        server_env = os.environ.copy()
+        if sys.platform != "win32":
+            bin_dir = str(server_bin.parent)
+            server_env["LD_LIBRARY_PATH"] = bin_dir + os.pathsep + server_env.get("LD_LIBRARY_PATH", "")
+
         try:
             ui.step("Launching Gemma 3 captioning server on port 8080...")
             process_caption = subprocess.Popen(
-                cmd_caption_server, 
-                # stdout=subprocess.DEVNULL, 
+                cmd_caption_server,
+                env=server_env,
+                # stdout=subprocess.DEVNULL,
                 # stderr=subprocess.DEVNULL
             )
             with ThreadPoolExecutor(max_workers=2) as executor:

@@ -115,15 +115,17 @@ def process_video(video_path):
     return temporal_persistence_filter(video_path=video_path)
 
 
-def download_gemma3_models(models_dir: Path):
+def download_gemma3_models(models_dir: Path,
+                        #    config_dir:Path,
+                           llama_server_manager: LlamaServerManager):
     """
     Sequentially downloads Gemma 3 model weights and its associated 
     multimodal vision projector from Hugging Face Hub.
     """
 
-    models_dir.mkdir(exist_ok=True, parents=True)
+    (llama_server_manager.models_dir).mkdir(exist_ok=True, parents=True)
     #enable_progress_bars()  
-    llama_server_manager = LlamaServerManager()
+    # llama_server_manager = LlamaServerManager(config_dir= config_dir)
     huggingface_repo = llama_server_manager.hf_repo
     files = [
         llama_server_manager.model_filename, 

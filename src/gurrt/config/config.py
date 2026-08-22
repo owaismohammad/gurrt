@@ -87,20 +87,30 @@ class Settings:
 
 
 class LlamaServerManager:
-    def __init__(self):
-        self.config_dir = Path(user_config_dir("gurrt"))
-
-        self.bin_dir = self.config_dir / "bin"
-        self.models_dir = self.config_dir / "models"
-
-        # Linux-only: no .exe suffix needed
-        self.server_bin = self.bin_dir / "llama-server"
-
+    def __init__(self, config_dir):
+        self.os = sys.platform
+        llama = ""
+        if self.os == "win32":
+            llama = "llama-server.exe"
+            self.llama_release_url = "https://api.github.com/repos/ggml-org/llama.cpp/releases/latest"
+        elif self.os == "linux":
+            llama = "llama-server"
+            self.llama_release_url = "https://drive.google.com/file/d/1LcwCvXAFfMmSzT-jXbAlBqVy8xVoCesR/view?usp=drive_link"
+        self.bin_dir = config_dir / "bin"
+        self.server_bin = self.bin_dir / llama
+        
+        
+        # self.config_dir = Path(user_config_dir("gurrt"))
+        # self.is_windows = sys.platform == "win32"
+        # self.server_bin = self.bin_dir / ("llama-server.exe" if self.is_windows else "llama-server")
+        
+        
+        self.models_dir = config_dir / "models"
         self.hf_repo = "unsloth/gemma-3-4b-it-GGUF"
         self.model_filename = "gemma-3-4b-it-Q4_K_M.gguf"
         self.mmproj_filename = "mmproj-F16.gguf"
 
         self.llm_path = self.models_dir / self.model_filename
-        self.mmproj_path = self.models_dir / self.mmproj_filename
-
-        self.llama_release_url = "https://api.github.com/repos/ggml-org/llama.cpp/releases/latest"        
+        self.mmproj_path = self.models_dir / self.mmproj_filename 
+        # self.llama_release_url = "https://api.github.com/repos/ggml-org/llama.cpp/releases/latest"
+        

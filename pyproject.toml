@@ -35,6 +35,7 @@ dependencies = [
     "prompt_toolkit>=3.0.0",
     "opencv-python>=5.0.0.93",
     "pandas>=3.0.5",
+    "gdown>=6.1.0",
 ]
 
 [project.urls]

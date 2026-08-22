@@ -38,7 +38,7 @@ console = ui.console
 app = typer.Typer(help="gUrrT: A Video Understanding Tool")
 config_dir = Path(user_config_dir("gurrt"))
 config_dir.mkdir(exist_ok=True, parents=True)
-llama_server_manager = LlamaServerManager()
+llama_server_manager = LlamaServerManager(config_dir= config_dir)
 
 _VALID_MODELS = {"smolvlm", "blip2"}
 _session_file = config_dir / "session.json"
@@ -402,7 +402,9 @@ def _do_init_llama() -> None:
     if not llama_server_manager.llm_path.exists() or not llama_server_manager.mmproj_path.exists():
         try:
             ui.step("Downloading Gemma 3 model weights...")
-            download_gemma3_models(llama_server_manager.models_dir)
+            download_gemma3_models(models_dir=llama_server_manager.models_dir,
+                                # config_dir=config_dir,
+                                llama_server_manager=llama_server_manager)
         except Exception as e:
             console.print(Panel(
                 f"[error]{e}[/error]",
@@ -416,67 +418,93 @@ def _do_init_llama() -> None:
         return
 
     llama_server_manager.bin_dir.mkdir(parents=True, exist_ok=True)
-    # try:
-    #     req = urllib.request.Request(
-    #         llama_server_manager.llama_release_url, headers={"User-Agent": "Mozilla/5.0"}
-    #     )
-    #     with console.status("[info]Fetching latest llama-server release from GitHub...[/info]", spinner="dots"):
-    #         with urllib.request.urlopen(req) as response:
-    #             release_data = json.loads(response.read().decode())
+    zip_path = config_dir / "temp_server.zip"
+    if llama_server_manager.os == "win32":
+        try:
+            req = urllib.request.Request(
+                llama_server_manager.llama_release_url, headers={"User-Agent": "Mozilla/5.0"}
+            )
+            with console.status("[info]Fetching latest llama-server release from GitHub...[/info]", spinner="dots"):
+                with urllib.request.urlopen(req) as response:
+                    release_data = json.loads(response.read().decode())
 
-    #     download_url = None
-    #     for asset in release_data.get("assets", []):
-    #         name = asset.get("name", "").lower()
-    #         if "bin-win" in name and "cuda" in name and "cudart" not in name and name.endswith(".zip"):
-    #             download_url = asset.get("browser_download_url")
-    #             break
+            download_url = None
+            for asset in release_data.get("assets", []):
+                name = asset.get("name", "").lower()
+                if "bin-win" in name and "cuda" in name and "cudart" not in name and name.endswith(".zip"):
+                    download_url = asset.get("browser_download_url")
+                    break
 
-    #     if not download_url:
-    #         for asset in release_data.get("assets", []):
-    #             name = asset.get("name", "").lower()
-    #             if "bin-win" in name and "cpu" in name and name.endswith(".zip"):
-    #                 download_url = asset.get("browser_download_url")
-    #                 break
+            if not download_url:
+                for asset in release_data.get("assets", []):
+                    name = asset.get("name", "").lower()
+                    if "bin-win" in name and "cpu" in name and name.endswith(".zip"):
+                        download_url = asset.get("browser_download_url")
+                        break
 
-    #     zip_path = config_dir / "temp_server.zip"
-    #     filename = download_url.split('/')[-1]
+            
+            filename = download_url.split('/')[-1]
 
-    #     stream_download(download_url, zip_path, f"  {filename}",
-    #                     headers={"User-Agent": "Mozilla/5.0"})
+            stream_download(download_url, zip_path, f"  {filename}",
+                            headers={"User-Agent": "Mozilla/5.0"})
 
-    #     with console.status("[info]Extracting server binary...[/info]", spinner="dots"):
-    #         with zipfile.ZipFile(zip_path, "r") as zip_ref:
-    #             extracted_count = 0
-    #             for file_path in zip_ref.namelist():
-    #                 filename = os.path.basename(file_path)
-    #                 lowered = filename.lower()
-    #                 if not filename:
-    #                     continue
-    #                 if lowered in ["llama-server.exe", "llama-server"]:
-    #                     with open(llama_server_manager.server_bin, "wb") as f:
-    #                         f.write(zip_ref.read(file_path))
-    #                     extracted_count += 1
-    #                 elif lowered.endswith(".dll"):
-    #                     with open(llama_server_manager.bin_dir / filename, "wb") as f:
-    #                         f.write(zip_ref.read(file_path))
-    #                     extracted_count += 1
+            with console.status("[info]Extracting server binary...[/info]", spinner="dots"):
+                with zipfile.ZipFile(zip_path, "r") as zip_ref:
+                    extracted_count = 0
+                    for file_path in zip_ref.namelist():
+                        filename = os.path.basename(file_path)
+                        lowered = filename.lower()
+                        if not filename:
+                            continue
+                        if lowered in ["llama-server.exe", "llama-server"]:
+                            with open(llama_server_manager.server_bin, "wb") as f:
+                                f.write(zip_ref.read(file_path))
+                            extracted_count += 1
+                        elif lowered.endswith(".dll"):
+                            with open(llama_server_manager.bin_dir / filename, "wb") as f:
+                                f.write(zip_ref.read(file_path))
+                            extracted_count += 1
 
-    #             if extracted_count == 0:
-    #                 raise FileNotFoundError("Could not locate execution components inside the release archive.")
+                    if extracted_count == 0:
+                        raise FileNotFoundError("Could not locate execution components inside the release archive.")
 
-    #     if os.path.exists(zip_path):
-    #         os.remove(zip_path)
+            if os.path.exists(zip_path):
+                os.remove(zip_path)
 
-    #     ui.success("Server binary and dependencies installed.")
-    try:
-        pass
+            ui.success("Server binary and dependencies installed.")
 
-    except Exception as e:
-        ui.error(f"Failed to download or extract server: {e}")
-        # if "zip_path" in locals() and os.path.exists(zip_path):
-        #     os.remove(zip_path)
+        except Exception as e:
+            ui.error(f"Failed to download or extract server: {e}")
+            if "zip_path" in locals() and os.path.exists(zip_path):
+                os.remove(zip_path)
+    elif llama_server_manager.os == "linux":
+        import gdown
+        import tarfile
 
+        try:
+            with console.status("[info]Fetching llama-server build from Google Drive...[/info]", spinner="dots"):
+                gdown.download(llama_server_manager.llama_release_url, str(zip_path), quiet=True)
 
+            if not zip_path.exists():
+                raise FileNotFoundError("Download did not produce a file.")
+
+            with console.status("[info]Extracting server binary...[/info]", spinner="dots"):
+                with tarfile.open(zip_path, "r:gz") as tar:
+                    tar.extractall(llama_server_manager.bin_dir)
+
+            if not llama_server_manager.server_bin.exists():
+                raise FileNotFoundError("Could not locate llama-server inside the release archive.")
+            os.chmod(llama_server_manager.server_bin, 0o755)
+
+            if os.path.exists(zip_path):
+                os.remove(zip_path)
+
+            ui.success("Server binary and dependencies installed.")
+
+        except Exception as e:
+            ui.error(f"Failed to download or extract server: {e}")
+            if "zip_path" in locals() and os.path.exists(zip_path):
+                os.remove(zip_path)
 def _do_models_download() -> None:
     cache_dir = config_dir / "models"
     cache_dir.mkdir(exist_ok=True, parents=True)
