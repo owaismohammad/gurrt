@@ -12,3 +12,7 @@ MANIFEST_PATH = Path(rf"/workspace/llama_bench/Video_ID_{ID}/manifest.json")
 CAPTION_PATH = Path(rf"/workspace/llama_bench/Video_ID_{ID}/captions.json")
 DEFAULT_OUT = Path(rf"/workspace/llama_bench/Video_ID_{ID}") / "prompts.json"
 RESPONSE_PATH = Path(rf"/workspace/llama_bench/Video_ID_{ID}") / "response.csv"
+
+QUESTIONS = [
+    "How does the concept of rectangles relate to the foundational understanding of integrals?"
+]

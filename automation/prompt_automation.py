@@ -37,7 +37,7 @@ from gurrt.core.prompts import (LLM_QUERY_PROMPT, LLM_SYSTEM_PROMPT,
                                 LOW_FIDELITY_VISUAL_NOTE)
 from gurrt.core.search import SearchService
 from gurrt.core.vectordb import VectorDB
-from gurrt.config.benchmark_config import VIDEO_PATH, OUTPUT_PATH, MANIFEST_PATH, CAPTION_PATH, DEFAULT_OUT
+from gurrt.config.benchmark_config import VIDEO_PATH, OUTPUT_PATH, MANIFEST_PATH, CAPTION_PATH, DEFAULT_OUT,QUESTIONS
 
 #DEFAULT_OUT = Path(r"C:\Users\fareh\Downloads\gurrt_benchmark\Video_ID_4") / "prompts.json"
 
@@ -223,17 +223,7 @@ def main(argv=None) -> int:
 
     # questions = list(args.questions)
 
-    questions = [
-        "How does the concept of rectangles relate to the foundational understanding of integrals?",
-        "What is the significance of using smaller rectangles to approximate the area under a curve?",
-        "How does the process of integration differ from basic geometric area calculations?",
-        "What role do limits play when transitioning from Riemann sums to a definite integral?",
-        "Why is the \"power rule\" often considered a fundamental building block for integration?",
-        "How does the notation of an integral signify the variable of integration?",
-        "What is the relationship between derivatives and integrals, often referred to as the Fundamental Theorem of Calculus?",
-        "How can visualizing the \"summing\" of infinite slices change one's perspective on accumulation?",
-        "Why is precision important when defining the width of rectangles in an integral?"
-    ]
+    questions =QUESTIONS
 
     if args.questions_file:
         if not args.questions_file.exists():
