@@ -35,6 +35,7 @@ import shutil
 import sys
 import time
 from pathlib import Path
+from platformdirs import user_config_dir
 
 from gurrt.cli import ui
 from gurrt.config.config import LlamaServerManager
@@ -47,7 +48,7 @@ from gurrt.config.benchmark_config import VIDEO_PATH, OUTPUT_PATH, MANIFEST_PATH
 DEFAULT_OUT_DIR = Path("automation_out")
 CAPTIONERS = ("llama", "blip2")
 
-
+home = Path(user_config_dir("gurrt"))
 def require_captioner_assets(captioner: str) -> None:
     """Fail before any video work if the chosen captioner is not installed.
 
@@ -57,7 +58,7 @@ def require_captioner_assets(captioner: str) -> None:
     """
     if captioner != "llama":
         return
-    mgr = LlamaServerManager()
+    mgr = LlamaServerManager(config_dir = home)
     missing = [str(p) for p in (mgr.server_bin, mgr.llm_path, mgr.mmproj_path)
                if not p.exists()]
     if missing:
@@ -72,7 +73,7 @@ def _collection_counts(rag: VideoRag) -> tuple[int, int]:
 
 
 def index_video(video_path: Path, captioner: str,
-                out_dir: Path | None = None) -> dict:
+                out_dir: Path) -> dict:
     """Index one video exactly as the CLI would, and report what landed.
 
     A fresh `VideoRag(reset=True)` per video is deliberate — it is what
@@ -83,8 +84,8 @@ def index_video(video_path: Path, captioner: str,
         raise FileNotFoundError(f"Video not found: {video_path}")
     require_captioner_assets(captioner)
 
-    mgr = LlamaServerManager()
-    rag = VideoRag(reset=False)
+    mgr = LlamaServerManager(config_dir = home)
+    rag = VideoRag(reset=True)
 
     video_start = time.time()
     if captioner == "llama":

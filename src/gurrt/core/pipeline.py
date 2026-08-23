@@ -32,7 +32,7 @@ class VideoRag:
         self.settings = Settings()
         self.models = ModelManager(self.settings)
         self.vectordb = VectorDB(str(self.settings.CHROMA_DB_PATH), reset=reset)
-        # self.llm = LLMService(self.settings)
+        self.llm = LLMService(self.settings)
         self.device = self.models.device
         self.text_embedder = self.models.get_text_embedder()
 
@@ -97,7 +97,10 @@ class VideoRag:
         log_captions(self.settings, video_path, metadatas, ids)
 
 
-    def index_video_llama_server(self, video_path: Path, server_bin: Path, models_dir: Path):
+    def index_video_llama_server(self, video_path: Path,
+                                 server_bin: Path,
+                                 models_dir: Path,
+                                 max_workers: int = 64):
         if self.reset:
             try:
                 self.llm.delete()
@@ -105,18 +108,30 @@ class VideoRag:
                 pass
         config_dir = Path(user_config_dir("gurrt"))
         llama_server_manager = LlamaServerManager(config_dir=config_dir)
+        # cmd_caption_server = [
+        #     str(server_bin),
+        #     "-m", str(llama_server_manager.llm_path),
+        #     "--mmproj", str(llama_server_manager.mmproj_path),
+        #     "-ngl", "99",
+        #     "--parallel", "4",
+        #     "-c", "8192",
+        #     "--port", "8080",
+        #     "-n","320",
+        #     #"--flash-attn"
+        # ]
         cmd_caption_server = [
-            str(server_bin),
-            "-m", str(llama_server_manager.llm_path),
-            "--mmproj", str(llama_server_manager.mmproj_path),
-            "-ngl", "99",
-            "--parallel", "4",
-            "-c", "8192",
-            "--port", "8080",
-            "-n","320",
-            #"--flash-attn"
-        ]
-
+                str(llama_server_manager.server_bin),
+                "-m", str(llama_server_manager.llm_path),
+                "--mmproj", str(llama_server_manager.mmproj_path),
+                "-ngl", "99",
+                "--parallel", str(max_workers),
+                "-c", str(8192 * max_workers),
+                "--port", "8080",
+                # "-n", "320",
+                "--flash-attn", "on",
+                "--cache-type-k", "q8_0",
+                "--cache-type-v", "q8_0",
+            ]
         process_caption = None
 
         server_env = os.environ.copy()
@@ -129,10 +144,10 @@ class VideoRag:
             process_caption = subprocess.Popen(
                 cmd_caption_server,
                 env=server_env,
-                # stdout=subprocess.DEVNULL,
-                # stderr=subprocess.DEVNULL
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
             )
-            with ThreadPoolExecutor(max_workers=2) as executor:
+            with ThreadPoolExecutor(max_workers= max_workers) as executor:
                 future_server = executor.submit(wait_for_server)
                 future_video = executor.submit(process_video, video_path)
                 server_ready = future_server.result()
@@ -150,7 +165,8 @@ class VideoRag:
                                                                         ids= ids,
                                                                         fps= fps,
                                                                         video_path= video_path,
-                                                                        settings= self.settings)              
+                                                                        settings= self.settings,
+                                                                        max_workers= max_workers)              
             self.vectordb.add_frames(ids=ids,
                                         embeddings=embeddings,
                                         metadata=metadatas)

@@ -2,6 +2,7 @@ import time
 import json
 import subprocess
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pandas as pd
 import requests
@@ -9,10 +10,38 @@ import requests
 from gurrt.config.benchmark_config import OUTPUT_PATH, DEFAULT_OUT, RESPONSE_PATH
 from gurrt.config.config import LlamaServerManager
 from gurrt.utils.llama_server_utils import wait_for_server
+from platformdirs import user_config_dir
+
+home = Path(user_config_dir("gurrt"))
+
+def ask_question(rec, timeout=300):
+    """Send one question to the server and return (question, answer_text_or_None, error_or_None)."""
+    question = rec["question"]
+    request_body = {
+        "model": "gemma-3-4b-it",
+        "messages": [
+            {"role": "system", "content": rec["system_prompt"]},
+            {"role": "user", "content": rec["user_prompt"]},
+        ],
+        "temperature": 0.0
+    }
+    try:
+        resp = requests.post(
+            "http://localhost:8080/v1/chat/completions",
+            json=request_body, timeout=timeout
+        )
+        if resp.status_code == 200:
+            text = resp.json()["choices"][0]["message"]["content"]
+            return question, text, None
+        else:
+            return question, None, f"HTTP {resp.status_code}"
+    except Exception as ex:
+        return question, None, str(ex)
 
 
 def llama_inference(prompt_json_path: Path = DEFAULT_OUT,
                      output_dir: Path = OUTPUT_PATH,
+                     max_workers: int = 10,
                      ):
     overall_start = time.time()
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -33,19 +62,31 @@ def llama_inference(prompt_json_path: Path = DEFAULT_OUT,
           f"{already_done} already answered ===")
 
     processed_this_run = 0
-    llama_server_manager = LlamaServerManager()
+    llama_server_manager = LlamaServerManager(home)
 
     cmd = [
         str(llama_server_manager.server_bin),
         "-m", str(llama_server_manager.llm_path),
-        "--mmproj", str(llama_server_manager.mmproj_path),
+        # "--mmproj", str(llama_server_manager.mmproj_path),
         "-ngl", "99",
-        "--parallel", "1",
-        "-c", "8192",
+        "--parallel", str(max_workers),
+        "-c", str(8192 * max_workers),
         "--port", "8080",
+        # "-n", "320",
+        "--flash-attn", "on",
+        "--cache-type-k", "q8_0",
+        "--cache-type-v", "q8_0",
     ]
 
-    process_query = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    import os
+    import sys
+    server_env = os.environ.copy()
+    if sys.platform != "win32":
+        bin_dir = str(llama_server_manager.server_bin.parent)
+        server_env["LD_LIBRARY_PATH"] = bin_dir + os.pathsep + server_env.get("LD_LIBRARY_PATH", "")
+
+    process_query = subprocess.Popen(cmd, env=server_env)
+
     try:
         wait_for_server()
     except Exception as e:
@@ -55,51 +96,29 @@ def llama_inference(prompt_json_path: Path = DEFAULT_OUT,
     print("\nInference Engine Ready")
 
     try:
-        for k, rec in enumerate(prompts_payload["prompts"]):
-            question = rec["question"]
-            print(f"\n[Q{k+1}/{total_q}] {question}")
+        pending = [rec for rec in prompts_payload["prompts"] if rec["question"] not in answers]
+        print(f"Sending {len(pending)} questions with up to {max_workers} concurrent requests...\n")
 
-            if question in answers:
-                continue
+        with ThreadPoolExecutor(max_workers=max_workers) as pool:
+            futures = {pool.submit(ask_question, rec): rec for rec in pending}
 
-            q_start = time.time()
-            request_body = {
-                "model": "gemma-3-4b-it",
-                "messages": [
-                    {"role": "system", "content": rec["system_prompt"]},
-                    {"role": "user", "content": rec["user_prompt"]},
-                ],
-                "temperature": 0.0
-            }
+            for future in as_completed(futures):
+                rec = futures[future]
+                question = rec["question"]
+                q_start = futures.get("_unused", None)  # placeholder, not used for timing per-request start
+                question_text, answer_text, error = future.result()
 
-            try:
-                resp = requests.post(
-                    "http://localhost:8080/v1/chat/completions",
-                    json=request_body, timeout=45
-                )
-                if resp.status_code == 200:
-                    text = resp.json()["choices"][0]["message"]["content"]
-                else:
-                    print(f"[ERROR] Q{k+1}/{total_q}: HTTP {resp.status_code}")
+                if error is not None:
+                    print(f"[ERROR] {question[:60]}...: {error}")
                     continue
-            except Exception as ex:
-                print(f"[ERROR] Q{k+1}/{total_q}: {ex}")
-                continue
 
-            answers[question] = text
-            processed_this_run += 1
+                answers[question_text] = answer_text
+                processed_this_run += 1
+                elapsed_total = time.time() - overall_start
+                print(f"[{processed_this_run}/{len(pending)}] Answered: {question[:60]}... "
+                      f"(total elapsed: {elapsed_total/60:.1f}m)")
 
-            # Incrementally save so progress isn't lost
-            pd.DataFrame(
-                [{"question": q, "response": answers[q]} for q in answers],
-                columns=["question", "response"]
-            ).to_csv(output_csv_path, index=False)
-
-            elapsed_q = time.time() - q_start
-            elapsed_total = time.time() - overall_start
-            print(f"[Q{k+1}/{total_q}] -> {elapsed_q:.1f}s (total elapsed: {elapsed_total/60:.1f}m)")
-
-        # Final CSV
+        # Save CSV once, after all questions are processed
         pd.DataFrame(
             [{"question": rec["question"], "response": answers.get(rec["question"], "")}
              for rec in prompts_payload["prompts"]],

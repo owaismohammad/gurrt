@@ -5,10 +5,10 @@ from pathlib import Path
 # CAPTION_PATH=Path(r"C:\Users\fareh\Downloads\gurrt_benchmark\Video_ID_20\captions.json")
 # DEFAULT_OUT = Path(r"C:\Users\fareh\Downloads\gurrt_benchmark\Video_ID_20") / "prompts.json"
 
-
-VIDEO_PATH=Path(rf"C:\Users\fareh\Downloads\gurrt_benchmark\Video_ID_16\Video_ID_16.mp4")
-OUTPUT_PATH=Path(rf"C:\Users\fareh\Downloads\llama_bench\Video_ID_16")
-MANIFEST_PATH=Path(r"C:\Users\fareh\Downloads\llama_bench\Video_ID_16\manifest.json")
-CAPTION_PATH=Path(r"C:\Users\fareh\Downloads\llama_bench\Video_ID_16\captions.json")
-DEFAULT_OUT = Path(r"C:\Users\fareh\Downloads\llama_bench\Video_ID_16") / "prompts.json"
-RESPONSE_PATH = Path(r"C:\Users\fareh\Downloads\llama_bench\Video_ID_16") / "response.csv"
+ID = 16
+VIDEO_PATH=Path(rf"/workspace/gurrt/experiment/Video_ID_{ID}.mp4")
+OUTPUT_PATH=Path(rf"/workspace/llama_bench/Video_ID_{ID}")
+MANIFEST_PATH = Path(rf"/workspace/llama_bench/Video_ID_{ID}/manifest.json")
+CAPTION_PATH = Path(rf"/workspace/llama_bench/Video_ID_{ID}/captions.json")
+DEFAULT_OUT = Path(rf"/workspace/llama_bench/Video_ID_{ID}") / "prompts.json"
+RESPONSE_PATH = Path(rf"/workspace/llama_bench/Video_ID_{ID}") / "response.csv"

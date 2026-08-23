@@ -54,7 +54,7 @@ async def _caption_single_frame_worker(
     
     async with semaphore:
         try:
-            async with session.post(server_url, json=payload, timeout=45) as resp:
+            async with session.post(server_url, json=payload, timeout=300) as resp:
                 if resp.status == 200:
                     result = await resp.json()
                     caption = result["choices"][0]["message"]["content"]
@@ -66,7 +66,7 @@ async def _caption_single_frame_worker(
             ui.error(f"Server timeout on frame {index}: {e}")
             return {"index": index, "text": "Error: Pipeline connection exception."}
 
-def batch_caption_frames(frame_list: list, concurrency_limit: int = 4) -> List[Dict[str, Any]]:
+def batch_caption_frames(frame_list: list, concurrency_limit: int = 16) -> List[Dict[str, Any]]:
     total = len(frame_list)
 
     with ui.make_progress() as progress:

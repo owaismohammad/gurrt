@@ -480,7 +480,7 @@ def _do_init_llama() -> None:
     elif llama_server_manager.os == "linux":
         import gdown
         import tarfile
-
+        import shutil
         try:
             with console.status("[info]Fetching llama-server build from Google Drive...[/info]", spinner="dots"):
                 gdown.download(llama_server_manager.llama_release_url, str(zip_path), quiet=True)
@@ -489,11 +489,27 @@ def _do_init_llama() -> None:
                 raise FileNotFoundError("Download did not produce a file.")
 
             with console.status("[info]Extracting server binary...[/info]", spinner="dots"):
+                extract_dir = llama_server_manager.bin_dir / "_extracted"
+                extract_dir.mkdir(parents=True, exist_ok=True)
                 with tarfile.open(zip_path, "r:gz") as tar:
-                    tar.extractall(llama_server_manager.bin_dir)
-
-            if not llama_server_manager.server_bin.exists():
-                raise FileNotFoundError("Could not locate llama-server inside the release archive.")
+                    tar.extractall(extract_dir)
+            
+                extracted_count = 0
+                for root, _, files in os.walk(extract_dir):
+                    for name in files:
+                        src_file = Path(root) / name
+                        lowered = name.lower()
+                        if lowered == "llama-server":
+                            shutil.copy2(src_file, llama_server_manager.server_bin)
+                            extracted_count += 1
+                        elif ".so" in lowered:
+                            shutil.copy2(src_file, llama_server_manager.bin_dir / name)
+                            extracted_count += 1
+            
+                shutil.rmtree(extract_dir, ignore_errors=True)
+            
+                if extracted_count == 0 or not llama_server_manager.server_bin.exists():
+                    raise FileNotFoundError("Could not locate llama-server inside the release archive.")
             os.chmod(llama_server_manager.server_bin, 0o755)
 
             if os.path.exists(zip_path):

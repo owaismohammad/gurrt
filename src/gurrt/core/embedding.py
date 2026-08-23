@@ -10,7 +10,7 @@ from gurrt.utils.utils import (
                             embed_texts)
 from gurrt.utils.llama_server_utils import batch_caption_frames
 from gurrt.core.debuglog import log_keyframes
-from automation.caption_bridge import export_keyframes, load_captions, reload_frames
+# from automation.caption_bridge import export_keyframes, load_captions, reload_frames
 from gurrt.config.benchmark_config import VIDEO_PATH, OUTPUT_PATH, MANIFEST_PATH, CAPTION_PATH, DEFAULT_OUT
 
 
@@ -121,12 +121,13 @@ def captioning_and_embedding_llama_server(
     video_path,
     text_embedder,
     settings=None,
+    max_workers: int = 16
 ):
     ui.info(f"Dispatching {len(frame_PIL)} frames to captioning server...")
     captioned_nodes = []
     start_time = time.time()
     try:
-        captioned_nodes = batch_caption_frames(frame_list=frame_PIL, concurrency_limit=4)
+        captioned_nodes = batch_caption_frames(frame_list=frame_PIL, concurrency_limit= max_workers)
     except Exception as e:
         ui.error(f"Batch captioning failed: {e}")
         return [], [], []
