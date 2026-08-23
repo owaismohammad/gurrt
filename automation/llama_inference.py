@@ -18,7 +18,7 @@ def ask_question(rec, timeout=300):
     """Send one question to the server and return (question, answer_text_or_None, error_or_None)."""
     question = rec["question"]
     request_body = {
-        "model": "gemma-3-4b-it",
+        "model": "gemma-4-12b-it",
         "messages": [
             {"role": "system", "content": rec["system_prompt"]},
             {"role": "user", "content": rec["user_prompt"]},
@@ -66,7 +66,7 @@ def llama_inference(prompt_json_path: Path = DEFAULT_OUT,
 
     cmd = [
         str(llama_server_manager.server_bin),
-        "-m", str(llama_server_manager.llm_path),
+        "-m", str(llama_server_manager.inference_llm_path),
         # "--mmproj", str(llama_server_manager.mmproj_path),
         "-ngl", "99",
         "--parallel", str(max_workers),

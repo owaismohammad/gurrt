@@ -20,7 +20,7 @@ import asyncio
 
 from gurrt.core.pipeline import VideoRag
 from gurrt.config.config import LlamaServerManager
-from gurrt.utils.llama_server_utils import download_gemma3_models
+from gurrt.utils.llama_server_utils import download_gemma3_models, download_gemma4_inference_model
 from gurrt.utils.downloads import stream_download
 from rich.panel import Panel
 from rich.prompt import Prompt
@@ -412,6 +412,19 @@ def _do_init_llama() -> None:
                 border_style=ui.BORDER_ERROR,
             ))
             return
+    if not llama_server_manager.inference_llm_path.exists():
+        try:
+            ui.step("Downloading Gemma 4 inference model weights...")
+            download_gemma4_inference_model(models_dir=llama_server_manager.models_dir,
+                                # config_dir=config_dir,
+                                llama_server_manager=llama_server_manager)
+        except Exception as e:
+            console.print(Panel(
+                f"[error]{e}[/error]",
+                title="[error]Model Download Failed[/error]",
+                border_style=ui.BORDER_ERROR,
+            ))
+            return    
 
     if llama_server_manager.server_bin.exists():
         ui.success("Llama server binary already present.")
