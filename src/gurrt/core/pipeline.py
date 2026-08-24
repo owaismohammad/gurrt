@@ -98,9 +98,10 @@ class VideoRag:
 
 
     def index_video_llama_server(self, video_path: Path,
-                                 server_bin: Path,
-                                 models_dir: Path,
-                                 max_workers: int = 64):
+                                server_bin: Path,
+                                models_dir: Path,
+                                out_dir_bench: Path,
+                                max_workers: int = 64):
         if self.reset:
             try:
                 self.llm.delete()
@@ -140,7 +141,7 @@ class VideoRag:
             server_env["LD_LIBRARY_PATH"] = bin_dir + os.pathsep + server_env.get("LD_LIBRARY_PATH", "")
 
         try:
-            ui.step("Launching Gemma 3 captioning server on port 8080...")
+            ui.step("Launching Gemma 4-e4b captioning server on port 8080...")
             process_caption = subprocess.Popen(
                 cmd_caption_server,
                 env=server_env,
@@ -157,6 +158,7 @@ class VideoRag:
                 raise TimeoutError("Captioning engine failed to initialize within VRAM allocation limits.")
 
             ui.success("Video frames processed and captioning server ready")
+            
             embeddings, metadatas, ids = captioning_and_embedding_llama_server(
                                                                         frame_PIL= frame_PIL,
                                                                         text_embedder=self.text_embedder,
@@ -166,11 +168,13 @@ class VideoRag:
                                                                         fps= fps,
                                                                         video_path= video_path,
                                                                         settings= self.settings,
-                                                                        max_workers= max_workers)              
+                                                                        max_workers= max_workers,
+                                                                        out_dir_bench = out_dir_bench)              
             self.vectordb.add_frames(ids=ids,
                                         embeddings=embeddings,
                                         metadata=metadatas)
-            log_captions(self.settings, video_path, metadatas, ids)
+            log_captions(self.settings, video_path, metadatas, ids,
+                        out_dir_bench= out_dir_bench)
         except Exception as e:
             ui.error(f"Pipeline failed: {e}")
         finally:

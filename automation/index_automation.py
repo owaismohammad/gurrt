@@ -30,20 +30,23 @@ Usage:
 from __future__ import annotations
 
 import argparse
+from ast import Dict
 import json
 import shutil
 import sys
 import time
 from pathlib import Path
+from typing import Any
 from platformdirs import user_config_dir
 
+from automation.llama_inference import llama_inference
 from gurrt.cli import ui
 from gurrt.config.config import LlamaServerManager
 # Private, but the alternative is duplicating its path-hashing scheme, which
 # would silently stop pointing at the real log directory the day it changes.
 from gurrt.core.debuglog import _video_dir
 from gurrt.core.pipeline import VideoRag
-from gurrt.config.benchmark_config import VIDEO_PATH, OUTPUT_PATH, MANIFEST_PATH, CAPTION_PATH, DEFAULT_OUT
+from gurrt.config.benchmark_config import VIDEO_PATH, OUTPUT_PATH, MANIFEST_PATH, CAPTION_PATH, DEFAULT_OUT, BASE_DIR, BENCHMARKING_DIR
 
 DEFAULT_OUT_DIR = Path("automation_out")
 CAPTIONERS = ("llama", "blip2")
@@ -51,7 +54,6 @@ CAPTIONERS = ("llama", "blip2")
 home = Path(user_config_dir("gurrt"))
 def require_captioner_assets(captioner: str) -> None:
     """Fail before any video work if the chosen captioner is not installed.
-
     Checked up front on purpose: keyframe extraction on an hour-long lecture
     is minutes of work, and discovering a missing GGUF afterwards wastes all
     of it.
@@ -66,14 +68,13 @@ def require_captioner_assets(captioner: str) -> None:
             "llama.cpp captioning engine is not installed — run "
             "`gurrt init-llama` first.\nMissing:\n  " + "\n  ".join(missing))
 
-
 def _collection_counts(rag: VideoRag) -> tuple[int, int]:
     return (rag.vectordb.caption_collection.count(),
             rag.vectordb.asr_collection.count())
 
-
-def index_video(video_path: Path, captioner: str,
-                out_dir: Path) -> dict:
+def index_video(video_path: Path,
+                captioner: str,
+                out_dir_bench: Path) -> dict:
     """Index one video exactly as the CLI would, and report what landed.
 
     A fresh `VideoRag(reset=True)` per video is deliberate — it is what
@@ -90,11 +91,12 @@ def index_video(video_path: Path, captioner: str,
     video_start = time.time()
     if captioner == "llama":
         rag.index_video_llama_server(video_path=video_path,
-                                     server_bin=mgr.server_bin,
-                                     models_dir=mgr.models_dir)
+                                    server_bin=mgr.server_bin,
+                                    models_dir=mgr.models_dir,
+                                    out_dir_bench = out_dir_bench)
     elif captioner == "blip2":
         rag.index_video_blip(video_path=video_path,
-                             out_dir = out_dir)
+                             out_dir = out_dir_bench)
     else:
         raise ValueError(f"Unknown captioner {captioner!r}, "
                          f"expected one of {CAPTIONERS}")
@@ -104,9 +106,6 @@ def index_video(video_path: Path, captioner: str,
     rag.index_audio(video_path=video_path)
     audio_sec = time.time() - audio_start
 
-    # index_video_llama_server catches its own exceptions and only prints, so
-    # a failed caption pass returns normally. Without this check the benchmark
-    # would go on to score answers drawn from an empty index.
     frame_count, asr_count = _collection_counts(rag)
     if frame_count == 0:
         raise RuntimeError(
@@ -131,10 +130,10 @@ def index_video(video_path: Path, captioner: str,
 
     # log_captions() already wrote the full caption + metadata JSON during the
     # run; copying it keeps the results folder self-contained.
-    if out_dir is not None:
+    if out_dir_bench is not None:
         written = _video_dir(rag.settings, video_path) / "captions.json"
         if written.exists():
-            target = out_dir / f"{video_path.stem}.captions.json"
+            target = out_dir_bench / f"{video_path.stem}.captions.json"
             shutil.copyfile(written, target)
             manifest["captions_json"] = str(target)
 
@@ -142,27 +141,6 @@ def index_video(video_path: Path, captioner: str,
                f"transcript chunks in {manifest['timings_sec']['total']}s "
                f"({captioner})")
     return manifest
-
-
-def index_videos(video_paths: list[Path], captioner: str,
-                 out_dir: Path) -> list[dict]:
-    out_dir.mkdir(parents=True, exist_ok=True)
-    require_captioner_assets(captioner)
-    for p in video_paths:
-        if not p.exists():
-            raise FileNotFoundError(f"Video not found: {p}")
-
-    if len(video_paths) > 1:
-        reset=True  #per video is the CLI's behaviour and the benchmark relies
-        # on it, but it means each video wipes the previous one's index.
-        ui.warn(f"{len(video_paths)} videos: each reset clears the previous "
-                "index, so only the last stays queryable afterwards.")
-
-    manifests = []
-    for video_path in video_paths:
-        ui.step(f"Indexing {video_path.name} with {captioner}")
-        manifests.append(index_video(video_path, captioner, out_dir))
-    return manifests
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
@@ -179,27 +157,30 @@ def _parse_args(argv=None):
     return p.parse_args(argv)
 
 
-def main(argv=None) -> int:
+def main(argv=None):
     args = _parse_args(argv)
-    captioner = "blip2"
-    video_id = 1
-    # for video_id in range(1, 2):
+    questions_id = BASE_DIR / "Questions"
+    questions_id.mkdir(exist_ok= True, parents= False)
+    for id in range(1, 21):
+    
+        video_path =BASE_DIR / "benchmarking - videos" / f"Video_ID_{id}"
+        Video_ID =  BENCHMARKING_DIR / f"Video_ID_{id}"
+        Video_ID.mkdir(parents = True, exist_ok= True)
+        try:
+            manifest = index_video(video_path=video_path,
+                                captioner="llama",
+                                out_dir_bench=Video_ID)
+        except Exception as e:
+            ui.error(f"Indexing failed: {e}")
+            continue
+        out = Video_ID / "manifest.json"
+        out.write_text(json.dumps(manifest, indent=2, ensure_ascii=False),
+                    encoding="utf-8")
+        ui.success(f"Indexed {len(manifest)} video(s) → {out}")
         
-    video_path =VIDEO_PATH
-    out_path =  OUTPUT_PATH
-    manifests = index_videos(video_paths=[video_path], captioner="llama", out_dir=out_path)
-    # try:
-    #     manifests = index_videos(args.videos, args.captioner, args.out_dir)
-    # except Exception as e:
-    #     ui.error(f"Indexing failed: {e}")
-    #     return 1
-
-    out = args.out_dir / "manifest.json"
-    out.write_text(json.dumps(manifests, indent=2, ensure_ascii=False),
-                   encoding="utf-8")
-    ui.success(f"Indexed {len(manifests)} video(s) → {out}")
-    return 0
-
+        llama_inference(questions_csv=questions_id / "Video_ID_{id}.csv",
+                        output_dir=Video_ID,
+                        max_workers=10)
 
 if __name__ == "__main__":
     sys.exit(main())

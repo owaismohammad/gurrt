@@ -74,7 +74,7 @@ def _write(path: Path, payload: dict) -> None:
                     encoding="utf-8")
 
 
-def log_captions(settings, video_path, metadatas, ids) -> None:
+def log_captions(settings, video_path, metadatas, ids, out_dir_bench: Path = None) -> None:
     """Every indexed frame, in time order, with its caption."""
     try:
         rows = []
@@ -95,7 +95,8 @@ def log_captions(settings, video_path, metadatas, ids) -> None:
             })
         rows.sort(key=lambda r: r["start_sec"] if r["start_sec"] is not None else 0)
 
-        out = _video_dir(settings, video_path) / "captions.json"
+        # out = _video_dir(settings, video_path) / "captions.json"
+        out = out_dir_bench / "transcript.json"
         _write(out, {
             "video": str(video_path),
             "written_at": datetime.now(timezone.utc).isoformat(),
@@ -108,7 +109,7 @@ def log_captions(settings, video_path, metadatas, ids) -> None:
         ui.warn(f"Could not write caption log: {e}")
 
 
-def log_keyframes(settings, video_path, frames, start_secs) -> None:
+def log_keyframes(settings, video_path, frames, start_secs, out_dir_bench : Path = None) -> None:
     """Write the selected keyframes as JPEGs, exactly as the VLM saw them.
 
     Two questions this answers that no text log can: did the scene detector
@@ -117,7 +118,8 @@ def log_keyframes(settings, video_path, frames, start_secs) -> None:
     reason - downscaling here would hide the very problem worth checking.
     """
     try:
-        out_dir = _video_dir(settings, video_path) / "frames"
+        # out_dir = _video_dir(settings, video_path) / "frames"
+        out_dir = out_dir_bench / "key_frames"
         out_dir.mkdir(parents=True, exist_ok=True)
 
         # A re-index replaces the selection, so stale images from a previous
@@ -143,7 +145,7 @@ def log_keyframes(settings, video_path, frames, start_secs) -> None:
         ui.warn(f"Could not write keyframe images: {e}")
 
 
-def log_transcript(settings, video_path, chunked_text, metadatas, ids) -> None:
+def log_transcript(settings, video_path, chunked_text, metadatas, ids, out_dir_bench : Path = None) -> None:
     """Every transcript chunk with the span of video it came from."""
     try:
         rows = []
@@ -158,7 +160,8 @@ def log_transcript(settings, video_path, chunked_text, metadatas, ids) -> None:
                 "est_tokens": estimate_tokens(text),
             })
 
-        out = _video_dir(settings, video_path) / "transcript.json"
+        # out = _video_dir(settings, video_path) / "transcript.json"
+        out = out_dir_bench / "transcript.json"
         _write(out, {
             "video": str(video_path),
             "written_at": datetime.now(timezone.utc).isoformat(),

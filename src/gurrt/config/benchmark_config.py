@@ -16,3 +16,6 @@ RESPONSE_PATH = Path(rf"/workspace/llama_bench/Video_ID_{ID}") / "response.csv"
 QUESTIONS = [
     "How does the concept of rectangles relate to the foundational understanding of integrals?"
 ]
+
+BASE_DIR = Path(__file__).resolve().parents[2]
+BENCHMARKING_DIR = BASE_DIR / "Benchmarking - 2"
