@@ -95,7 +95,7 @@ class LlamaServerManager:
             self.llama_release_url = "https://api.github.com/repos/ggml-org/llama.cpp/releases/latest"
         elif self.os == "linux":
             llama = "llama-server"
-            self.llama_release_url = "https://drive.google.com/file/d/1LcwCvXAFfMmSzT-jXbAlBqVy8xVoCesR/view?usp=drive_link"
+            self.llama_release_url = "https://drive.google.com/file/d/1N4ZFaK6Wa95nReK1Mgo-8qycqUlKQY7e/view?usp=sharing"
         self.bin_dir = config_dir / "bin"
         self.server_bin = self.bin_dir / llama
         

@@ -100,8 +100,9 @@ class VideoRag:
     def index_video_llama_server(self, video_path: Path,
                                 server_bin: Path,
                                 models_dir: Path,
-                                out_dir_bench: Path,
-                                max_workers: int = 64):
+                                max_workers: int,
+                                out_dir_bench: Path = None,
+                                ):
         if self.reset:
             try:
                 self.llm.delete()

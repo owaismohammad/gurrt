@@ -96,7 +96,11 @@ def log_captions(settings, video_path, metadatas, ids, out_dir_bench: Path = Non
         rows.sort(key=lambda r: r["start_sec"] if r["start_sec"] is not None else 0)
 
         # out = _video_dir(settings, video_path) / "captions.json"
-        out = out_dir_bench / "transcript.json"
+        if out_dir_bench:
+            out = out_dir_bench / "captions.json"
+        else:
+            out = _video_dir(settings, video_path) / "captions.json"
+        # out = out_dir_bench / "transcript.json"
         _write(out, {
             "video": str(video_path),
             "written_at": datetime.now(timezone.utc).isoformat(),
@@ -118,8 +122,11 @@ def log_keyframes(settings, video_path, frames, start_secs, out_dir_bench : Path
     reason - downscaling here would hide the very problem worth checking.
     """
     try:
-        # out_dir = _video_dir(settings, video_path) / "frames"
-        out_dir = out_dir_bench / "key_frames"
+        
+        if out_dir_bench:
+            out_dir = out_dir_bench / "key_frames"
+        else:
+            out_dir = _video_dir(settings, video_path) / "frames"
         out_dir.mkdir(parents=True, exist_ok=True)
 
         # A re-index replaces the selection, so stale images from a previous
@@ -160,8 +167,12 @@ def log_transcript(settings, video_path, chunked_text, metadatas, ids, out_dir_b
                 "est_tokens": estimate_tokens(text),
             })
 
+        if out_dir_bench:
+            out = out_dir_bench / "transcript.json"
+        else:
+            out = _video_dir(settings, video_path) / "transcript.json"
         # out = _video_dir(settings, video_path) / "transcript.json"
-        out = out_dir_bench / "transcript.json"
+        # out = out_dir_bench / "transcript.json"
         _write(out, {
             "video": str(video_path),
             "written_at": datetime.now(timezone.utc).isoformat(),

@@ -32,7 +32,7 @@ async def _caption_single_frame_worker(
     server_url = "http://localhost:8080/v1/chat/completions"
     
     payload = {
-        "model": "gemma-3-4b-it", 
+        "model": "gemma-4-e4b-it", 
         "messages": [
             {
                 "role": "user",
@@ -54,19 +54,22 @@ async def _caption_single_frame_worker(
     
     async with semaphore:
         try:
-            async with session.post(server_url, json=payload, timeout=300) as resp:
+            async with session.post(server_url, json=payload, timeout=900) as resp:
                 if resp.status == 200:
                     result = await resp.json()
                     caption = result["choices"][0]["message"]["content"]
-                    return {"index": index, "text": caption}
+                    return {"index": index, "text": caption, "success": True}
                 else:
                     ui.warn(f"Engine error on frame {index}: HTTP {resp.status}")
-                    return {"index": index, "text": "Error: Failed to generate description."}
+                    return {"index": index, "text": "Error: Failed to generate description.", "success": False}
         except Exception as e:
             ui.error(f"Server timeout on frame {index}: {e}")
-            return {"index": index, "text": "Error: Pipeline connection exception."}
+            return {"index": index, "text": "Error: Pipeline connection exception.", "success": False}
 
-def batch_caption_frames(frame_list: list, concurrency_limit: int = 16) -> List[Dict[str, Any]]:
+RETRY_ATTEMPTS = 3
+RETRY_BACKOFF_BASE_SEC = 2
+
+def batch_caption_frames(frame_list: list, concurrency_limit: int ) -> List[Dict[str, Any]]:
     total = len(frame_list)
 
     with ui.make_progress() as progress:
@@ -75,6 +78,7 @@ def batch_caption_frames(frame_list: list, concurrency_limit: int = 16) -> List[
         async def run_pipeline():
             semaphore = asyncio.Semaphore(concurrency_limit)
             tasks = []
+            b64_by_index: Dict[int, str] = {}
 
             async def tracked_worker(session, b64_str, idx):
                 result = await _caption_single_frame_worker(session, b64_str, idx, semaphore)
@@ -85,14 +89,39 @@ def batch_caption_frames(frame_list: list, concurrency_limit: int = 16) -> List[
                 for idx, pil_frame in enumerate(frame_list):
                     try:
                         b64_str = _convert_pil_to_base64(pil_frame)
+                        b64_by_index[idx] = b64_str
                         tasks.append(asyncio.create_task(tracked_worker(session, b64_str, idx)))
                     except Exception as e:
                         ui.warn(f"Skipping corrupt frame {idx}: {e}")
 
                 results = await asyncio.gather(*tasks)
+                results_by_index = {r["index"]: r for r in results if r is not None}
 
-            results = [r for r in results if r is not None]
-            results.sort(key=lambda x: x["index"])
+                # Failures are almost always the client's own request queueing
+                # behind the server's single-threaded vision encoder, not a bad
+                # frame — so retrying serially (no contention) against the now
+                # idle server recovers nearly all of them instead of poisoning
+                # the index with an "Error: ..." placeholder caption.
+                failed_indices = [i for i, r in results_by_index.items() if not r["success"]]
+                if failed_indices:
+                    ui.step(f"Retrying {len(failed_indices)} frame(s) that failed captioning...")
+                    retry_semaphore = asyncio.Semaphore(1)
+                    for idx in failed_indices:
+                        for attempt in range(1, RETRY_ATTEMPTS + 1):
+                            result = await _caption_single_frame_worker(
+                                session, b64_by_index[idx], idx, retry_semaphore
+                            )
+                            if result["success"]:
+                                results_by_index[idx] = result
+                                ui.success(f"Frame {idx} captioned on retry {attempt}")
+                                break
+                            if attempt < RETRY_ATTEMPTS:
+                                await asyncio.sleep(RETRY_BACKOFF_BASE_SEC * (2 ** (attempt - 1)))
+                        else:
+                            ui.error(f"Frame {idx} failed after {RETRY_ATTEMPTS} retries — dropping from index")
+                            del results_by_index[idx]
+
+            results = sorted(results_by_index.values(), key=lambda x: x["index"])
             return results
 
         return asyncio.run(run_pipeline())

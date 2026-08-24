@@ -46,7 +46,7 @@ from gurrt.config.config import LlamaServerManager
 # would silently stop pointing at the real log directory the day it changes.
 from gurrt.core.debuglog import _video_dir
 from gurrt.core.pipeline import VideoRag
-from gurrt.config.benchmark_config import VIDEO_PATH, OUTPUT_PATH, MANIFEST_PATH, CAPTION_PATH, DEFAULT_OUT, BASE_DIR, BENCHMARKING_DIR
+# from gurrt.config.benchmark_config import VIDEO_PATH, OUTPUT_PATH, MANIFEST_PATH, CAPTION_PATH, DEFAULT_OUT, BASE_DIR, BENCHMARKING_DIR
 
 DEFAULT_OUT_DIR = Path("automation_out")
 CAPTIONERS = ("llama", "blip2")
@@ -93,7 +93,8 @@ def index_video(video_path: Path,
         rag.index_video_llama_server(video_path=video_path,
                                     server_bin=mgr.server_bin,
                                     models_dir=mgr.models_dir,
-                                    out_dir_bench = out_dir_bench)
+                                    out_dir_bench = out_dir_bench,
+                                    max_workers = 64)
     elif captioner == "blip2":
         rag.index_video_blip(video_path=video_path,
                              out_dir = out_dir_bench)
@@ -155,17 +156,31 @@ def _parse_args(argv=None):
     p.add_argument("--out-dir", type=Path, default=DEFAULT_OUT_DIR,
                    help=f"Where manifests are written (default: {DEFAULT_OUT_DIR}).")
     return p.parse_args(argv)
+BASE_DIR = Path(__file__).resolve().parents[3] / "workspace"
+print(BASE_DIR)
 
 
+
+ROOT_BASE_DIR = Path(__file__).resolve().parents[2]
+print(ROOT_BASE_DIR)
+BENCHMARKING_DIR = ROOT_BASE_DIR / "Benchmarking - 2"
+BENCHMARKING_DIR.mkdir(parents = True, exist_ok= True)
+
+VIDEO_DIR = ROOT_BASE_DIR / "Videos"
+VIDEO_DIR.mkdir(parents = True, exist_ok= True)
+
+QUES_DIR = ROOT_BASE_DIR / "Questions"
+QUES_DIR.mkdir(parents = True, exist_ok= True)
 def main(argv=None):
     args = _parse_args(argv)
-    questions_id = BASE_DIR / "Questions"
-    questions_id.mkdir(exist_ok= True, parents= False)
     for id in range(1, 21):
     
-        video_path =BASE_DIR / "benchmarking - videos" / f"Video_ID_{id}"
+        video_path = VIDEO_DIR / f"Video_ID_{id}.mp4"
+        
         Video_ID =  BENCHMARKING_DIR / f"Video_ID_{id}"
         Video_ID.mkdir(parents = True, exist_ok= True)
+        
+        print(f"Starting Video_ID_{id}")
         try:
             manifest = index_video(video_path=video_path,
                                 captioner="llama",
@@ -178,7 +193,7 @@ def main(argv=None):
                     encoding="utf-8")
         ui.success(f"Indexed {len(manifest)} video(s) → {out}")
         
-        llama_inference(questions_csv=questions_id / "Video_ID_{id}.csv",
+        llama_inference(questions_csv=QUES_DIR / f"Video_ID_{id}.csv",
                         output_dir=Video_ID,
                         max_workers=10)
 
