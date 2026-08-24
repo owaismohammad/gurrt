@@ -220,7 +220,10 @@ def run_inference(prompts_payload: dict, df: pd.DataFrame, question_col: str,
         bin_dir = str(llama_server_manager.server_bin.parent)
         server_env["LD_LIBRARY_PATH"] = bin_dir + os.pathsep + server_env.get("LD_LIBRARY_PATH", "")
 
-    process_query = subprocess.Popen(cmd, env=server_env)
+    process_query = subprocess.Popen(cmd,
+                                    env=server_env,
+                                    stdout=subprocess.DEVNULL,
+                                    stderr=subprocess.DEVNULL)
 
     try:
         if not wait_for_server():
