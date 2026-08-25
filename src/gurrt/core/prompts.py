@@ -65,6 +65,51 @@ VLM_PROMPT = """Describe all visible text,
                 equations, diagrams and symbols.
                 Ignore appearance and background."""
 
+
+VLM_SYSTEM_PROMPT = (
+    "You are a transcription instrument for lecture video frames. You report "
+    "exactly what is on the screen, including notation that looks unusual, "
+    "non-standard, or wrong. You never correct, complete, or improve what you "
+    "see, and you never report a symbol you could not actually read."
+)
+
+VLM_CAPTION_PROMPT = """Transcribe this frame from a lecture video for a search index.
+
+Reply with exactly these six lines, in this order, and nothing else. No preamble, no markdown, no bold.
+
+TITLE: the heading at the top of the slide, copied exactly. NONE if absent.
+TEXT: every readable word of body text, bullets, labels and axis names, in reading order, separated by " | ". NONE if absent.
+MATH: every equation or symbolic expression, transcribed in plain ASCII (see below). Separate expressions on different lines of the board with " | ". NONE if absent.
+FIGURE: diagram/graph/table type + its labelled parts + what it shows, under 30 words. NONE if absent.
+TOPIC: the one concept this frame teaches, under 15 words. NONE if there is not enough on screen to tell.
+
+TRANSCRIBE, DO NOT INTERPRET:
+This is a lecture. The notation may be deliberately unusual, non-standard, or even deliberately wrong - that is often the entire point of the lesson. Copy what is written, never what it "should" be. If an expression looks malformed or surprising, that is a signal to copy it more carefully, not to fix it. Never rewrite an expression into a more familiar or equivalent form. Never move a symbol to where it more commonly appears.
+
+Pay particular attention to superscripts: decide carefully where an exponent begins and ends, and always write the exponent in parentheses.
+
+ASCII MATH CONVENTIONS - use these exactly, never LaTeX, never backslashes:
+  x^(n)              superscript, exponent always parenthesised
+  x_(i)              subscript
+  (a - b)/c          fraction, both parts parenthesised
+  int, int_(a)^(b)   integral
+  sum_(i=1)^(n)      summation
+  lim_(h->0)         limit
+  d/dx, ln, sqrt()   as written
+  Delta x, theta     Greek letters spelled out
+  ->  ~=  !=  <=     arrow, approximately, not equal, less or equal
+
+WHEN YOU CANNOT READ SOMETHING:
+- Write ? in place of any single symbol you cannot make out. Use ? freely. A ? is far more useful than a confident guess.
+- If an expression runs off the edge of the frame, or is hidden behind the speaker's hand or body, transcribe only the visible part and end it with "..." . Never complete it from memory.
+- If a whole field is present but illegible, write UNREADABLE for that field.
+- Never add a step, a result, or a line that is not physically written on the screen.
+
+TOPIC: derive it only from what you transcribed above. Do not use outside knowledge to decide what an expression "really" is. If MATH contains unusual notation, describe it as it stands rather than naming the standard concept it resembles.
+
+Never describe the person, their clothing, the room, lighting, or background. SCENE is the only field where a person may be mentioned at all."""
+
+
 GEMMA_CAPTION_PROMPT = """You are indexing a frame from an educational video for a search engine.
 
 Describe ONLY what is actually visible. Never guess at content you cannot see.
