@@ -106,9 +106,10 @@ class LlamaServerManager:
         
         
         self.models_dir = config_dir / "models"
-        self.hf_repo = "unsloth/gemma-4-E4B-it-GGUF"
-        self.model_filename = "gemma-4-E4B-it-Q8_0.gguf"
+        self.hf_repo = "unsloth/gemma-4-12b-it-GGUF"
+        self.model_filename = "gemma-4-12b-it-Q6_K.gguf"
         self.mmproj_filename = "mmproj-F16.gguf"
+        
         self.inference_hf_repo="unsloth/gemma-4-12b-it-GGUF"
         self.inference_model_filename = "gemma-4-12b-it-Q6_K.gguf"
 

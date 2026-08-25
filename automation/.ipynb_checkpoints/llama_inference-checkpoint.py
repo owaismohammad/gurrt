@@ -190,7 +190,7 @@ def _load_prompts_payload(prompts_payload: dict | str | Path) -> dict:
 
 
 def run_inference(prompts_payload: dict | str | Path, df: pd.DataFrame, question_col: str,
-                  output_dir: Path, max_workers: int = 4,
+                  output_dir: Path, max_workers: int = 10,
                   port: int = CHAT_PORT) -> Path:
     """Start llama-server and answer every prompt concurrently.
 
@@ -231,7 +231,7 @@ def run_inference(prompts_payload: dict | str | Path, df: pd.DataFrame, question
         "-m", str(llama_server_manager.inference_llm_path),
         "-ngl", "99",
         "--parallel", str(max_workers),
-        "-c", str(8192* max_workers),
+        "-c", str(4096 * max_workers),
         "--port", str(port),
         "--flash-attn", "on",
         "--cache-type-k", "q8_0",

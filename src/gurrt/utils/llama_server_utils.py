@@ -54,7 +54,7 @@ async def _caption_single_frame_worker(
     
     async with semaphore:
         try:
-            async with session.post(server_url, json=payload, timeout=45) as resp:
+            async with session.post(server_url, json=payload, timeout=90) as resp:
                 if resp.status == 200:
                     result = await resp.json()
                     caption = result["choices"][0]["message"]["content"]
@@ -150,3 +150,34 @@ def download_gemma3_models(models_dir: Path,
             total_bytes=hf_file_size(huggingface_repo, filename),
         )
         ui.success(f"Downloaded {filename}")
+        
+def download_gemma4_inference_model(models_dir: Path,
+                        #    config_dir:Path,
+                           llama_server_manager: LlamaServerManager):
+    """
+    Downloads Gemma 4 inference model weights from Hugging Face Hub.
+    """
+
+    (llama_server_manager.models_dir).mkdir(exist_ok=True, parents=True)
+    #enable_progress_bars()  
+    # llama_server_manager = LlamaServerManager(config_dir= config_dir)
+    huggingface_repo = llama_server_manager.inference_hf_repo
+    filename = llama_server_manager.inference_model_filename
+
+    target_path = models_dir / filename
+
+    if target_path.exists():
+        ui.info(f"{filename} already present, skipping")
+        return
+
+    watch_download(
+        description=f"  {filename}",
+        worker=lambda f=filename: hf_hub_download(
+            repo_id=huggingface_repo,
+            filename=f,
+            local_dir=str(models_dir),
+        ),
+        watch_dir=models_dir,
+        total_bytes=hf_file_size(huggingface_repo, filename),
+    )
+    ui.success(f"Downloaded {filename}")

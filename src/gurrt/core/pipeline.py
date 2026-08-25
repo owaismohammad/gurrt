@@ -100,7 +100,7 @@ class VideoRag:
     def index_video_llama_server(self, video_path: Path,
                                 server_bin: Path,
                                 models_dir: Path,
-                                max_workers: int,
+                                max_workers: int = 4,
                                 out_dir_bench: Path = None,
                                 ):
         if self.reset:
@@ -129,8 +129,9 @@ class VideoRag:
                 "--parallel", str(max_workers),
                 "-c", str(2048 * max_workers),
                 "--port", "8080",
-                "-n", "320",
+                # "-n", "320",
                 "--flash-attn", "on",
+                "--reasoning", "off",
                 # "--cache-type-k", "q8_0",
                 # "--cache-type-v", "q8_0",
             ]
@@ -146,8 +147,8 @@ class VideoRag:
             process_caption = subprocess.Popen(
                 cmd_caption_server,
                 env=server_env,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL
+                # stdout=subprocess.DEVNULL,
+                # stderr=subprocess.DEVNULL
             )
             with ThreadPoolExecutor(max_workers= max_workers) as executor:
                 future_server = executor.submit(wait_for_server)

@@ -173,29 +173,29 @@ QUES_DIR = ROOT_BASE_DIR / "Questions"
 QUES_DIR.mkdir(parents = True, exist_ok= True)
 def main(argv=None):
     args = _parse_args(argv)
-    for id in range(5, 21):
+    for id in range(8, 21):
     
-        # video_path = VIDEO_DIR / f"Video_ID_{id}.mp4"
+        video_path = VIDEO_DIR / f"Video_ID_{id}.mp4"
         
         Video_ID =  BENCHMARKING_DIR / f"Video_ID_{id}"
         Video_ID.mkdir(parents = True, exist_ok= True)
         
         print(f"Starting Video_ID_{id}")
-        # try:
-        #     manifest = index_video(video_path=video_path,
-        #                         captioner="llama",
-        #                         out_dir_bench=Video_ID)
-        # except Exception as e:
-        #     ui.error(f"Indexing failed: {e}")
-        #     continue
-        # out = Video_ID / "manifest.json"
-        # out.write_text(json.dumps(manifest, indent=2, ensure_ascii=False),
-        #             encoding="utf-8")
-        # ui.success(f"Indexed {len(manifest)} video(s) → {out}")
+        try:
+            manifest = index_video(video_path=video_path,
+                                captioner="llama",
+                                out_dir_bench=Video_ID)
+        except Exception as e:
+            ui.error(f"Indexing failed: {e}")
+            continue
+        out = Video_ID / "manifest.json"
+        out.write_text(json.dumps(manifest, indent=2, ensure_ascii=False),
+                    encoding="utf-8")
+        ui.success(f"Indexed {len(manifest)} video(s) → {out}")
         
         llama_inference(questions_csv=QUES_DIR / f"Video_ID_{id}.csv",
                         output_dir=Video_ID,
-                        max_workers=4)
+                        max_workers=10)
 
 if __name__ == "__main__":
     sys.exit(main())

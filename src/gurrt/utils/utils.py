@@ -457,20 +457,26 @@ def temporal_persistence_filter(video_path: Path,
     proc.stdout.close()
     proc.wait()
 
-    cap = cv2.VideoCapture(str(video_path))
+    # cv2's bundled ffmpeg can't software-decode AV1 (it only registers a
+    # hwaccel path, which fails on platforms with no AV1 hw decoder and
+    # returns no frame at all). imageio_ffmpeg's ffmpeg has libdav1d, so
+    # frames are pulled through that binary instead of cap.read().
     frame_PIL = []
     valid_timestamps = []
     for ts in confirmed_timestamps:
-        cap.set(cv2.CAP_PROP_POS_MSEC, ts * 1000)
-        ret, frame = cap.read()
-        if ret:
-            gray = float((cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)).std())
-            if gray < 5.0:
-                continue
-            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            frame_PIL.append(_resize_long_edge(Image.fromarray(rgb)))
-            valid_timestamps.append(ts)
-    cap.release()
+        frame_proc = subprocess.run(
+            [ffmpeg_exe, "-ss", str(ts), "-i", str(video_path),
+             "-frames:v", "1", "-f", "image2pipe", "-vcodec", "mjpeg", "pipe:1"],
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL
+        )
+        if frame_proc.returncode != 0 or not frame_proc.stdout:
+            continue
+        rgb = Image.open(BytesIO(frame_proc.stdout)).convert("RGB")
+        gray = float(np.array(rgb.convert("L")).std())
+        if gray < 5.0:
+            continue
+        frame_PIL.append(_resize_long_edge(rgb))
+        valid_timestamps.append(ts)
     # ids = [f"{video_path}:{t}:Persistence_Filter" for t in valid_timestamps]
     # ui.info(f"Selected {len(frame_PIL)} keyframes from {total_frames} total frames")
     # return frame_PIL, valid_timestamps, ids, fps
