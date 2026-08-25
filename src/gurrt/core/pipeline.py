@@ -127,12 +127,12 @@ class VideoRag:
                 "--mmproj", str(llama_server_manager.mmproj_path),
                 "-ngl", "99",
                 "--parallel", str(max_workers),
-                "-c", str(8192 * max_workers),
+                "-c", str(2048 * max_workers),
                 "--port", "8080",
-                # "-n", "320",
+                "-n", "320",
                 "--flash-attn", "on",
-                "--cache-type-k", "q8_0",
-                "--cache-type-v", "q8_0",
+                # "--cache-type-k", "q8_0",
+                # "--cache-type-v", "q8_0",
             ]
         process_caption = None
 
